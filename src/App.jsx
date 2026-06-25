@@ -7,6 +7,7 @@ import PlanPage from './pages/PlanPage.jsx'
 import CartPage from './pages/CartPage.jsx'
 import Sidebar, { SidebarItem } from './components/Sidebar.jsx'
 import { Home, Calendar, Settings, GlobeCheck, ShoppingCart } from 'lucide-react'
+import { plans } from './data/data.js'
 
 function App() {
   return (
@@ -24,7 +25,7 @@ function App() {
           <Route path="/" element={<Todo />} />
           <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/settings" element={<SettingsPage />} />
-          <Route path="/plan" element={<PlanPage />} />
+          <Route path="/plan" element={<PlanPage plans={plans} />} />
           <Route path="/cart" element={<CartPage />} />
         </Routes>
       </section>

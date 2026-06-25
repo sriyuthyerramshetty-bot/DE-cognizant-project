@@ -16,7 +16,7 @@ function App() {
         <SidebarItem icon={<Home />} text="Home" to="/" end />
         <SidebarItem icon={<Calendar />} text="Calendar" to="/calendar" />
         <SidebarItem icon={<Settings />} text="Settings" to="/settings" />
-        <SidebarItem icon={<GlobeCheck />} text="Plan" to="/plan" />
+        <SidebarItem icon={<GlobeCheck />} text="Plans" to="/plan" />
         <SidebarItem icon={<ShoppingCart />} text="Cart" to="/cart" />
       </Sidebar>
 

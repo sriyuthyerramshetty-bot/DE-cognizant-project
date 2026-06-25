@@ -3,8 +3,10 @@ import { Routes, Route } from 'react-router-dom'
 import Todo from './pages/Todo.jsx'
 import CalendarPage from './pages/CalendarPage.jsx'
 import SettingsPage from './pages/SettingsPage.jsx'
+import PlanPage from './pages/PlanPage.jsx'
+import CartPage from './pages/CartPage.jsx'
 import Sidebar, { SidebarItem } from './components/Sidebar.jsx'
-import { Home, Calendar, Settings } from 'lucide-react'
+import { Home, Calendar, Settings, GlobeCheck, ShoppingCart } from 'lucide-react'
 
 function App() {
   return (
@@ -13,6 +15,8 @@ function App() {
         <SidebarItem icon={<Home />} text="Home" to="/" end />
         <SidebarItem icon={<Calendar />} text="Calendar" to="/calendar" />
         <SidebarItem icon={<Settings />} text="Settings" to="/settings" />
+        <SidebarItem icon={<GlobeCheck />} text="Plan" to="/plan" />
+        <SidebarItem icon={<ShoppingCart />} text="Cart" to="/cart" />
       </Sidebar>
 
       <section className="flex-1">
@@ -20,6 +24,8 @@ function App() {
           <Route path="/" element={<Todo />} />
           <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/plan" element={<PlanPage />} />
+          <Route path="/cart" element={<CartPage />} />
         </Routes>
       </section>
     </main>

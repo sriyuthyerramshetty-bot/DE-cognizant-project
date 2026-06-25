@@ -1,9 +1,10 @@
-import { Car } from "lucide-react"
-
 function CartPage() {
     return (
         <>
-            <h1>Cart Page</h1>
+        <div className="p-6">
+            <h1 className="text-2xl font-semibold">Cart</h1>
+            <p className="mt-2 text-slate-600">This is the cart page.</p>
+        </div>
         </>
     )
 }

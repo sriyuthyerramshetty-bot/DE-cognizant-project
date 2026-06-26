@@ -1,9 +1,19 @@
 import { useEffect, useRef, useState } from 'react'
 import { Check, Pencil, Trash2 } from 'lucide-react'
+import DueDateInput from '../components/DueDateInput'
+import useTaskReminders from '../hooks/useTaskReminders'
 
 function Todo() {
   const [tasks, setTasks] = useState([
-    { id: 1, name: 'Jogging', isEditing: false, isCompleted: false, dueAt: '' },
+    {
+      id: 1,
+      name: 'Jogging',
+      isEditing: false,
+      isCompleted: false,
+      dueAt: '',
+      reminderAt: null,
+      reminderNotifiedAt: null,
+    },
   ])
   const [view, setView] = useState('active')
   const [removingTaskIds, setRemovingTaskIds] = useState(new Set())
@@ -11,6 +21,10 @@ function Todo() {
   const [nextId, setNextId] = useState(2)
   const inputRef = useRef(null)
   const editingTaskId = tasks.find((task) => task.isEditing)?.id
+  const hasPendingUnnamedTask = tasks.some(
+    (task) => task.isEditing && !task.name.trim(),
+  )
+  const isAddTaskDisabled = view !== 'active' || hasPendingUnnamedTask
 
   useEffect(() => {
     if (editingTaskId && inputRef.current) {
@@ -18,9 +32,23 @@ function Todo() {
     }
   }, [editingTaskId])
 
+  useTaskReminders(setTasks)
+
   const handleAddTask = () => {
+    if (hasPendingUnnamedTask) {
+      return
+    }
+
     setTasks((currentTasks) => [
-      { id: nextId, name: '', isEditing: true, isCompleted: false, dueAt: '' },
+      {
+        id: nextId,
+        name: '',
+        isEditing: true,
+        isCompleted: false,
+        dueAt: '',
+        reminderAt: null,
+        reminderNotifiedAt: null,
+      },
       ...currentTasks,
     ])
     setNextId((currentId) => currentId + 1)
@@ -34,10 +62,32 @@ function Todo() {
     )
   }
 
-  const handleTaskDueDateChange = (taskId, value) => {
+  const handleTaskDueDateClear = (taskId) => {
     setTasks((currentTasks) =>
       currentTasks.map((task) =>
-        task.id === taskId ? { ...task, dueAt: value } : task,
+        task.id === taskId
+          ? {
+              ...task,
+              dueAt: '',
+              reminderAt: null,
+              reminderNotifiedAt: null,
+            }
+          : task,
+      ),
+    )
+  }
+
+  const handleTaskDueDateCommit = (taskId, parsedDue) => {
+    setTasks((currentTasks) =>
+      currentTasks.map((task) =>
+        task.id === taskId
+          ? {
+              ...task,
+              dueAt: parsedDue.normalizedDisplay,
+              reminderAt: parsedDue.date.toISOString(),
+              reminderNotifiedAt: null,
+            }
+          : task,
       ),
     )
   }
@@ -145,7 +195,7 @@ function Todo() {
   }
 
   return (
-    <div className="p-8 min-h-screen flex flex-col">
+    <div className="relative flex h-screen flex-col overflow-hidden p-8">
       <h1 className="text-2xl font-semibold">Good Morning, Sriyuth!</h1>
       <div className="mt-2 flex items-center justify-between">
         <p className="text-slate-600">Where would you like to start today?</p>
@@ -161,7 +211,7 @@ function Todo() {
         </select>
       </div>
 
-      <main className="mt-6 flex-1">
+      <main className="relative z-0 mt-6 min-h-0 flex-1 overflow-y-auto pr-1 pb-24">
         {visibleTasks.map((task) => {
           const isRemoving = removingTaskIds.has(task.id)
           const isRestoring = restoringTaskIds.has(task.id)
@@ -176,7 +226,10 @@ function Todo() {
                   : 'max-h-28 opacity-100 translate-y-0 mb-3'
               }`}
             >
-              <div className="group flex items-center gap-4 rounded-lg border border-gray-300 p-2 hover:border-gray-400">
+              <div
+                data-task-row-id={task.id}
+                className="group flex items-center gap-4 rounded-lg border border-gray-300 p-2 hover:border-gray-400"
+              >
                 <div className="flex w-full items-center gap-3">
                   <button
                     type="button"
@@ -195,12 +248,35 @@ function Todo() {
                       value={task.name}
                       onChange={(event) => handleTaskNameChange(task.id, event.target.value)}
                       onBlur={(event) => {
-                        const value = event.currentTarget.value.trim()
-                        if (!value) {
-                          event.currentTarget.focus()
+                        const nameInput = event.currentTarget
+                        const currentRow = nameInput.closest(
+                          `[data-task-row-id="${task.id}"]`,
+                        )
+                        const nextFocusedElement = event.relatedTarget
+                        if (
+                          nextFocusedElement instanceof HTMLElement &&
+                          currentRow?.contains(nextFocusedElement)
+                        ) {
                           return
                         }
-                        finishTaskEditing(task.id, value)
+
+                        setTimeout(() => {
+                          const activeElement = document.activeElement
+                          if (
+                            activeElement instanceof HTMLElement &&
+                            currentRow?.contains(activeElement)
+                          ) {
+                            return
+                          }
+
+                          const value = nameInput.value.trim()
+                          if (!value) {
+                            nameInput.focus()
+                            return
+                          }
+
+                          finishTaskEditing(task.id, value)
+                        }, 0)
                       }}
                       onKeyDown={(event) => {
                         if (event.key === 'Enter') {
@@ -222,14 +298,14 @@ function Todo() {
                   )}
 
                   <div className="ml-auto mr-2 flex items-center gap-1">
-                    <input
-                      type="datetime-local"
-                      value={task.dueAt || ''}
-                      onChange={(event) =>
-                        handleTaskDueDateChange(task.id, event.target.value)
-                      }
-                      className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700 outline-none focus:border-gray-400"
-                      aria-label={`Due date for ${task.name || 'task'}`}
+                    <DueDateInput
+                      taskId={task.id}
+                      taskName={task.name}
+                      value={task.dueAt}
+                      onCommit={handleTaskDueDateCommit}
+                      onClear={handleTaskDueDateClear}
+                      isCompleted={task.isCompleted}
+                      isEditable={task.isEditing}
                     />
 
                     <button
@@ -265,11 +341,11 @@ function Todo() {
           )
         })}
       </main>
-
-
       <button
-        className={view === 'active' ? 'mt-auto mb-6 p-3 bg-white text-black rounded-lg outline outline-2 outline-gray-300 hover:bg-black hover:text-white transition' : 'mt-auto mb-6 p-3 bg-white text-black rounded-lg outline outline-2 outline-gray-300 bg-gray-200 cursor-not-allowed'}
-        onClick={view === 'active' ? handleAddTask : null}
+        type="button"
+        className={isAddTaskDisabled ? 'absolute bottom-6 left-1/2 -translate-x-1/2 right-6 z-20 rounded-lg w-[720px] bg-gray-200 p-3 text-black outline outline-2 outline-gray-300 cursor-not-allowed transition-colors duration-200 ease-out' : 'absolute bottom-6 left-1/2 -translate-x-1/2 right-6 z-20 rounded-lg w-[720px] bg-white p-3 text-black outline outline-2 outline-gray-300 transition-colors duration-200 ease-out hover:bg-black hover:text-white'}
+        onClick={handleAddTask}
+        disabled={isAddTaskDisabled}
       >
         + Add New Task
       </button>

@@ -1,0 +1,26 @@
+{
+    "CartPage": {
+        "title": "My Cart",
+        "subtitle": "Review your order and enter your details.",
+        "orderSummary": "Order Summary",
+        "emptyMessage": "No items in cart.",
+        "total": "Total"
+    },
+    "PlanPage": {
+        "title": "Plans",
+        "subtitle": "Find the plan you are looking for.",
+        "searchPlaceholder": "Search for plans...",
+        "addToCart": "Add to Cart",
+        "removeFromCart": "Remove from Cart",
+        "searchError": "No plans found. Try adjusting your search.",
+        "options": {
+            "all": "All",
+            "5G": "5G",
+            "Broadband": "Broadband",
+            "Mobile": "Mobile",
+            "Price": "Price",
+            "Speed": "Speed",
+            "Best Value": "Best Value"
+        }
+    }
+}

@@ -19,21 +19,30 @@ function DueDateInput({
   onClear,
   isCompleted = false,
   isEditable = false,
+  onRequestExitEdit,
 }) {
   const [month, setMonth] = useState('')
   const [day, setDay] = useState('')
   const [year, setYear] = useState('')
-  const [time, setTime] = useState('')
+  const [hour, setHour] = useState('')
+  const [minute, setMinute] = useState('')
   const [meridiem, setMeridiem] = useState('AM')
   const [containerElement, setContainerElement] = useState(null)
   const isInputDisabled = isCompleted || !isEditable
+  const currentYear = new Date().getFullYear()
+  const yearOptions = Array.from({ length: 11 }, (_, index) => String(currentYear + index))
+  const monthOptions = Array.from({ length: 12 }, (_, index) => String(index + 1).padStart(2, '0'))
+  const dayOptions = Array.from({ length: 31 }, (_, index) => String(index + 1).padStart(2, '0'))
+  const hourOptions = Array.from({ length: 12 }, (_, index) => String(index + 1).padStart(2, '0'))
+  const minuteOptions = Array.from({ length: 60 }, (_, index) => String(index).padStart(2, '0'))
 
   const hydrateFromValue = (nextValue) => {
     if (!nextValue) {
       setMonth('')
       setDay('')
       setYear('')
-      setTime('')
+      setHour('')
+      setMinute('')
       setMeridiem('AM')
       return
     }
@@ -48,7 +57,8 @@ function DueDateInput({
       setYear(dateTimeMatch[1])
       setMonth(dateTimeMatch[2])
       setDay(dateTimeMatch[3])
-      setTime(`${String(hour12).padStart(2, '0')}:${minute}`)
+      setHour(String(hour12).padStart(2, '0'))
+      setMinute(minute)
       setMeridiem(nextMeridiem)
       return
     }
@@ -58,7 +68,8 @@ function DueDateInput({
       setYear(dateOnlyMatch[1])
       setMonth(dateOnlyMatch[2])
       setDay(dateOnlyMatch[3])
-      setTime('')
+      setHour('')
+      setMinute('')
       setMeridiem('AM')
       return
     }
@@ -66,7 +77,8 @@ function DueDateInput({
     setMonth('')
     setDay('')
     setYear('')
-    setTime('')
+    setHour('')
+    setMinute('')
     setMeridiem('AM')
   }
 
@@ -78,7 +90,8 @@ function DueDateInput({
     setMonth('')
     setDay('')
     setYear('')
-    setTime('')
+    setHour('')
+    setMinute('')
     setMeridiem('AM')
     onClear(taskId)
   }
@@ -109,14 +122,13 @@ function DueDateInput({
     let minuteNumber = 0
     let hasTime = false
 
-    if (time.trim()) {
-      const timeMatch = /^(\d{1,2}):(\d{2})$/.exec(time.trim())
-      if (!timeMatch) {
-        return null
-      }
+    if ((hour && !minute) || (!hour && minute)) {
+      return null
+    }
 
-      const hour12 = Number(timeMatch[1])
-      minuteNumber = Number(timeMatch[2])
+    if (hour && minute) {
+      const hour12 = Number(hour)
+      minuteNumber = Number(minute)
       hasTime = true
 
       if (
@@ -208,6 +220,7 @@ function DueDateInput({
 
     event.preventDefault()
     commitValue()
+    onRequestExitEdit?.()
     event.currentTarget.blur()
   }
 
@@ -218,77 +231,104 @@ function DueDateInput({
       onBlur={commitIfLeavingControl}
       aria-label={`Due date inputs for ${taskName || 'task'}`}
     >
-      <input
-        type="text"
-        inputMode="numeric"
-        maxLength={2}
+      <select
         value={month}
         disabled={isInputDisabled}
-        onChange={(event) => setMonth(event.target.value.replace(/\D/g, ''))}
+        onChange={(event) => setMonth(event.target.value)}
         onKeyDown={handleEnterCommit}
-        placeholder="MM"
-        className={`w-11 rounded-md border px-2 py-1 text-xs outline-none ${
+        className={`w-[50px] rounded-md border px-1 py-1 text-xs outline-none ${
           isInputDisabled
             ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
             : 'border-gray-300 bg-white text-gray-700 focus:border-gray-400'
         }`}
         aria-label={`Month for ${taskName || 'task'}`}
-      />
+      >
+        <option value="">MM</option>
+        {monthOptions.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
       <span className="text-gray-400">/</span>
-      <input
-        type="text"
-        inputMode="numeric"
-        maxLength={2}
+      <select
         value={day}
         disabled={isInputDisabled}
-        onChange={(event) => setDay(event.target.value.replace(/\D/g, ''))}
+        onChange={(event) => setDay(event.target.value)}
         onKeyDown={handleEnterCommit}
-        placeholder="DD"
-        className={`w-11 rounded-md border px-2 py-1 text-xs outline-none ${
+        className={`w-12 rounded-md border px-1 py-1 text-xs outline-none ${
           isInputDisabled
             ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
             : 'border-gray-300 bg-white text-gray-700 focus:border-gray-400'
         }`}
         aria-label={`Day for ${taskName || 'task'}`}
-      />
+      >
+        <option value="">DD</option>
+        {dayOptions.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
       <span className="text-gray-400">/</span>
-      <input
-        type="text"
-        inputMode="numeric"
-        maxLength={4}
+      <select
         value={year}
         disabled={isInputDisabled}
-        onChange={(event) => setYear(event.target.value.replace(/\D/g, ''))}
+        onChange={(event) => setYear(event.target.value)}
         onKeyDown={handleEnterCommit}
-        placeholder="YYYY"
         className={`w-16 rounded-md border px-2 py-1 text-xs outline-none ${
           isInputDisabled
             ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
             : 'border-gray-300 bg-white text-gray-700 focus:border-gray-400'
         }`}
         aria-label={`Year for ${taskName || 'task'}`}
-      />
-      <input
-        type="text"
-        inputMode="numeric"
-        maxLength={5}
-        value={time}
+      >
+        <option value="">YYYY</option>
+        {yearOptions.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
+      <select
+        value={hour}
         disabled={isInputDisabled}
-        onChange={(event) => {
-          const nextValue = event.target.value
-            .replace(/[^\d:]/g, '')
-            .replace(/:{2,}/g, ':')
-          setTime(nextValue)
-        }}
+        onChange={(event) => setHour(event.target.value)}
         onKeyDown={handleEnterCommit}
-        placeholder="hh:mm"
         className={`w-14 rounded-md border px-2 py-1 text-xs outline-none ${
           isInputDisabled
             ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
             : 'border-gray-300 bg-white text-gray-700 focus:border-gray-400'
         }`}
-        aria-label={`Time for ${taskName || 'task'} (optional)`}
-      />
+        aria-label={`Hour for ${taskName || 'task'} (optional)`}
+      >
+        <option value="">hh</option>
+        {hourOptions.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
+      <span className="text-gray-400">:</span>
+      <select
+        value={minute}
+        disabled={isInputDisabled}
+        onChange={(event) => setMinute(event.target.value)}
+        onKeyDown={handleEnterCommit}
+        className={`w-14 rounded-md border px-2 py-1 text-xs outline-none ${
+          isInputDisabled
+            ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
+            : 'border-gray-300 bg-white text-gray-700 focus:border-gray-400'
+        }`}
+        aria-label={`Minute for ${taskName || 'task'} (optional)`}
+      >
+        <option value="">mm</option>
+        {minuteOptions.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
       <select
         value={meridiem}
         disabled={isInputDisabled}

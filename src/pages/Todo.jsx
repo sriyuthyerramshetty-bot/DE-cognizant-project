@@ -106,6 +106,19 @@ function Todo() {
     )
   }
 
+  const commitTaskEditing = (taskId, nextName) => {
+    const trimmedName = (nextName ?? '').trim()
+    if (!trimmedName) {
+      if (inputRef.current) {
+        inputRef.current.focus()
+      }
+      return false
+    }
+
+    finishTaskEditing(taskId, trimmedName)
+    return true
+  }
+
   const startTaskEditing = (taskId) => {
     setTasks((currentTasks) =>
       currentTasks.map((task) => ({
@@ -229,6 +242,30 @@ function Todo() {
               <div
                 data-task-row-id={task.id}
                 className="group flex items-center gap-4 rounded-lg border border-gray-300 p-2 hover:border-gray-400"
+                onBlurCapture={() => {
+                  if (!task.isEditing) {
+                    return
+                  }
+
+                  setTimeout(() => {
+                    const rowElement = document.querySelector(
+                      `[data-task-row-id="${task.id}"]`,
+                    )
+                    if (!(rowElement instanceof HTMLElement)) {
+                      return
+                    }
+
+                    const activeElement = document.activeElement
+                    if (
+                      activeElement instanceof HTMLElement &&
+                      rowElement.contains(activeElement)
+                    ) {
+                      return
+                    }
+
+                    commitTaskEditing(task.id, task.name)
+                  }, 10)
+                }}
               >
                 <div className="flex w-full items-center gap-3">
                   <button
@@ -244,44 +281,14 @@ function Todo() {
                   {task.isEditing ? (
                     <input
                       ref={task.isEditing ? inputRef : null}
+                      data-task-name-input="true"
                       type="text"
                       value={task.name}
                       onChange={(event) => handleTaskNameChange(task.id, event.target.value)}
-                      onBlur={(event) => {
-                        const nameInput = event.currentTarget
-                        const currentRow = nameInput.closest(
-                          `[data-task-row-id="${task.id}"]`,
-                        )
-                        const nextFocusedElement = event.relatedTarget
-                        if (
-                          nextFocusedElement instanceof HTMLElement &&
-                          currentRow?.contains(nextFocusedElement)
-                        ) {
-                          return
-                        }
-
-                        setTimeout(() => {
-                          const activeElement = document.activeElement
-                          if (
-                            activeElement instanceof HTMLElement &&
-                            currentRow?.contains(activeElement)
-                          ) {
-                            return
-                          }
-
-                          const value = nameInput.value.trim()
-                          if (!value) {
-                            nameInput.focus()
-                            return
-                          }
-
-                          finishTaskEditing(task.id, value)
-                        }, 0)
-                      }}
                       onKeyDown={(event) => {
                         if (event.key === 'Enter') {
                           event.preventDefault()
-                          event.currentTarget.blur()
+                          commitTaskEditing(task.id, event.currentTarget.value)
                         }
                       }}
                       placeholder="Enter task name"
@@ -306,15 +313,24 @@ function Todo() {
                       onClear={handleTaskDueDateClear}
                       isCompleted={task.isCompleted}
                       isEditable={task.isEditing}
+                      onRequestExitEdit={() => commitTaskEditing(task.id, task.name)}
                     />
 
                     <button
                       type="button"
-                      onClick={() => task.isCompleted ? null : startTaskEditing(task.id)}
+                      onClick={() => {
+                        if (task.isCompleted || task.isEditing) {
+                          return
+                        }
+
+                        startTaskEditing(task.id)
+                      }}
                       className={`rounded-md p-1.5 text-gray-600 transition-all duration-200 hover:text-black ${
-                        task.isEditing || task.isCompleted
+                        task.isCompleted
                           ? 'opacity-0 pointer-events-none'
-                          : 'opacity-0 group-hover:opacity-100'
+                          : task.isEditing
+                            ? 'opacity-100'
+                            : 'opacity-0 group-hover:opacity-100'
                       }`}
                       aria-label={`Edit ${task.name || 'task'}`}
                     >
@@ -326,7 +342,7 @@ function Todo() {
                       onClick={() => handleDeleteTask(task.id)}
                       className={`rounded-md p-1.5 text-gray-600 transition-all duration-200 hover:text-black ${
                         task.isEditing
-                          ? 'opacity-0 pointer-events-none'
+                          ? 'opacity-100'
                           : 'opacity-0 group-hover:opacity-100'
                       }`}
                       aria-label={`Delete ${task.name || 'task'}`}

@@ -22,5 +22,8 @@
             "Speed": "Speed",
             "Best Value": "Best Value"
         }
+    },
+    "PlanBox": {
+        "bestValue": "Best Value"
     }
 }

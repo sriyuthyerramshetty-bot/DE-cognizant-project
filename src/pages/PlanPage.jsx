@@ -1,11 +1,11 @@
 import FilterDropdown from '../components/FilterDropdown.jsx'
 import SearchBar from '../components/SearchBar.jsx'
+import PlanGrid from '../components/PlanGrid.jsx';
 import { useState } from 'react';
 import TextAsset from '../assets/TextAssets.json'
-import PlanGrid from '../components/PlanGrid.jsx';
 
 function PlanPage({ plans }) {
-    
+
     // State to hold the search input value
     const [searchInput, setSearchInput] = useState("");
     const [filter, setFilter] = useState("all");

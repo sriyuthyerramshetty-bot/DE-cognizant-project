@@ -1,9 +1,10 @@
 import AddToCartButton from './AddToCartButton.jsx'
+import { useCart } from '../context/CartContext.jsx'
 import { Wifi, Zap, Smartphone, Gauge } from 'lucide-react'
 import TextAsset from '../assets/TextAssets.json'
-import { useCart } from '../context/CartContext.jsx'
 
 function PlanBox({ plan }) {
+
     const { cart, addToCart } = useCart();
 
     return (

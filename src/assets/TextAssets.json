@@ -25,5 +25,13 @@
     },
     "PlanBox": {
         "bestValue": "Best Value"
+    },
+    "UserInfoBox": {
+        "title": "Your Information",
+        "name": "Full Name",
+        "email": "Email",
+        "phone": "Phone Number",
+        "address": "Address",
+        "submitButton": "Place Order"
     }
 }

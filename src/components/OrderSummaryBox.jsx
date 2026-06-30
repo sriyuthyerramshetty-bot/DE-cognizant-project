@@ -9,7 +9,7 @@ function OrderSummaryBox ({ cart, removeFromCart }) {
     return (
         <div className="flex-1 border rounded-lg shadow-md p-6 flex flex-col">
             <h2 className="text-xl font-semibold mb-4">{TextAsset.CartPage.orderSummary}</h2>
-            <div className="flex flex-col gap-3 flex-1">
+            <div className="flex flex-col gap-3 flex-1 overflow-y-auto min-h-0 pr-3">
                 {cart.length === 0 ? (
                     <p className="text-gray-500">{TextAsset.CartPage.emptyMessage}</p>
                 ) : (

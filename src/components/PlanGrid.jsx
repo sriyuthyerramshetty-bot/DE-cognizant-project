@@ -11,7 +11,7 @@ function PlanGrid ({ filteredPlans }) {
     }
 
     return (
-        <div className="grid grid-cols-3 gap-4 px-6">
+        <div className="grid grid-cols-3 gap-4 px-6 pb-10">
             {filteredPlans.map((plan) => (
                 <PlanBox key={plan.id} plan={plan} />
             ))}

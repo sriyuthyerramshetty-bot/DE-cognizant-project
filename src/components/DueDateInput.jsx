@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import DatePicker from 'react-datepicker'
+import 'react-datepicker/dist/react-datepicker.css'
 import { formatDateOnly, formatDateTime, isNowOrFuture } from '../utils/dueDate'
 
 const maybeRequestNotificationPermission = () => {
@@ -21,64 +23,53 @@ function DueDateInput({
   isEditable = false,
   onRequestExitEdit,
 }) {
-  const [month, setMonth] = useState('')
-  const [day, setDay] = useState('')
-  const [year, setYear] = useState('')
-  const [hour, setHour] = useState('')
-  const [minute, setMinute] = useState('')
+  const [selectedDate, setSelectedDate] = useState(null)
+  const [timeText, setTimeText] = useState('')
   const [meridiem, setMeridiem] = useState('AM')
   const [containerElement, setContainerElement] = useState(null)
+  const [isAnyCalendarOpen, setIsAnyCalendarOpen] = useState(false)
   const isInputDisabled = isCompleted || !isEditable
   const currentYear = new Date().getFullYear()
-  const yearOptions = Array.from({ length: 11 }, (_, index) => String(currentYear + index))
-  const monthOptions = Array.from({ length: 12 }, (_, index) => String(index + 1).padStart(2, '0'))
-  const dayOptions = Array.from({ length: 31 }, (_, index) => String(index + 1).padStart(2, '0'))
-  const hourOptions = Array.from({ length: 12 }, (_, index) => String(index + 1).padStart(2, '0'))
-  const minuteOptions = Array.from({ length: 60 }, (_, index) => String(index).padStart(2, '0'))
 
   const hydrateFromValue = (nextValue) => {
     if (!nextValue) {
-      setMonth('')
-      setDay('')
-      setYear('')
-      setHour('')
-      setMinute('')
+      setSelectedDate(null)
+      setTimeText('')
       setMeridiem('AM')
       return
     }
 
     const dateTimeMatch = /^(\d{4})-(\d{2})-(\d{2})\s(\d{2}):(\d{2})$/.exec(nextValue)
     if (dateTimeMatch) {
-      const hour24 = Number(dateTimeMatch[4])
-      const minute = dateTimeMatch[5]
-      const nextMeridiem = hour24 >= 12 ? 'PM' : 'AM'
-      const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12
+      const year = Number(dateTimeMatch[1])
+      const month = Number(dateTimeMatch[2])
+      const day = Number(dateTimeMatch[3])
+      const hour = Number(dateTimeMatch[4])
+      const minute = Number(dateTimeMatch[5])
+      const dateValue = new Date(year, month - 1, day, 0, 0, 0, 0)
+      const hour12 = hour % 12 === 0 ? 12 : hour % 12
+      const nextMeridiem = hour >= 12 ? 'PM' : 'AM'
 
-      setYear(dateTimeMatch[1])
-      setMonth(dateTimeMatch[2])
-      setDay(dateTimeMatch[3])
-      setHour(String(hour12).padStart(2, '0'))
-      setMinute(minute)
+      setSelectedDate(Number.isNaN(dateValue.getTime()) ? null : dateValue)
+      setTimeText(`${String(hour12).padStart(2, '0')}:${String(minute).padStart(2, '0')}`)
       setMeridiem(nextMeridiem)
       return
     }
 
     const dateOnlyMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(nextValue)
     if (dateOnlyMatch) {
-      setYear(dateOnlyMatch[1])
-      setMonth(dateOnlyMatch[2])
-      setDay(dateOnlyMatch[3])
-      setHour('')
-      setMinute('')
+      const year = Number(dateOnlyMatch[1])
+      const month = Number(dateOnlyMatch[2])
+      const day = Number(dateOnlyMatch[3])
+      const dateValue = new Date(year, month - 1, day, 0, 0, 0, 0)
+      setSelectedDate(Number.isNaN(dateValue.getTime()) ? null : dateValue)
+      setTimeText('')
       setMeridiem('AM')
       return
     }
 
-    setMonth('')
-    setDay('')
-    setYear('')
-    setHour('')
-    setMinute('')
+    setSelectedDate(null)
+    setTimeText('')
     setMeridiem('AM')
   }
 
@@ -87,23 +78,40 @@ function DueDateInput({
   }, [taskId, value])
 
   const clearAllFields = () => {
-    setMonth('')
-    setDay('')
-    setYear('')
-    setHour('')
-    setMinute('')
+    setSelectedDate(null)
+    setTimeText('')
     setMeridiem('AM')
     onClear(taskId)
   }
 
-  const buildParsedDue = () => {
-    const monthNumber = Number(month)
-    const dayNumber = Number(day)
-    const yearNumber = Number(year)
+  const isTodayOrFutureDate = (date) => {
+    const selectedDay = new Date(date)
+    selectedDay.setHours(0, 0, 0, 0)
 
-    if (!month || !day || !year) {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    return selectedDay.getTime() >= today.getTime()
+  }
+
+  const buildParsedDue = () => {
+    const hasTypedTime = Boolean(timeText.trim())
+
+    if (!selectedDate && !hasTypedTime) {
       return null
     }
+
+    if (!selectedDate && hasTypedTime) {
+      return null
+    }
+
+    if (!selectedDate) {
+      return null
+    }
+
+    const yearNumber = selectedDate.getFullYear()
+    const monthNumber = selectedDate.getMonth() + 1
+    const dayNumber = selectedDate.getDate()
 
     if (
       Number.isNaN(monthNumber) ||
@@ -122,13 +130,14 @@ function DueDateInput({
     let minuteNumber = 0
     let hasTime = false
 
-    if ((hour && !minute) || (!hour && minute)) {
-      return null
-    }
+    if (hasTypedTime) {
+      const timeMatch = /^(\d{1,2}):(\d{2})$/.exec(timeText.trim())
+      if (!timeMatch) {
+        return null
+      }
 
-    if (hour && minute) {
-      const hour12 = Number(hour)
-      minuteNumber = Number(minute)
+      const hour12 = Number(timeMatch[1])
+      minuteNumber = Number(timeMatch[2])
       hasTime = true
 
       if (
@@ -182,8 +191,11 @@ function DueDateInput({
     }
 
     const parsedDue = buildParsedDue()
+    const isValidDueValue = parsedDue
+      ? (parsedDue.hasTime ? isNowOrFuture(parsedDue.date) : isTodayOrFutureDate(parsedDue.date))
+      : false
 
-    if (!parsedDue || !isNowOrFuture(parsedDue.date)) {
+    if (!isValidDueValue) {
       clearAllFields()
       return
     }
@@ -195,6 +207,10 @@ function DueDateInput({
 
   const commitIfLeavingControl = () => {
     if (isInputDisabled) {
+      return
+    }
+
+    if (isAnyCalendarOpen) {
       return
     }
 
@@ -224,6 +240,27 @@ function DueDateInput({
     event.currentTarget.blur()
   }
 
+  const handleCalendarClose = () => {
+    setIsAnyCalendarOpen(false)
+    commitValue()
+  }
+
+  const formatTimeInput = (rawValue) => {
+    const digits = rawValue.replace(/\D/g, '').slice(0, 4)
+
+    if (digits.length <= 2) {
+      return digits
+    }
+
+    return `${digits.slice(0, 2)}:${digits.slice(2)}`
+  }
+
+  const sharedInputClasses = `rounded-md border px-2 py-1 text-xs outline-none ${
+    isInputDisabled
+      ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
+      : 'border-gray-300 bg-white text-gray-700 focus:border-gray-400'
+  }`
+
   return (
     <div
       ref={setContainerElement}
@@ -231,115 +268,47 @@ function DueDateInput({
       onBlur={commitIfLeavingControl}
       aria-label={`Due date inputs for ${taskName || 'task'}`}
     >
-      <select
-        value={month}
-        disabled={isInputDisabled}
-        onChange={(event) => setMonth(event.target.value)}
+      <DatePicker
+        selected={selectedDate}
+        onChange={(nextValue) => setSelectedDate(nextValue)}
         onKeyDown={handleEnterCommit}
-        className={`w-[50px] rounded-md border px-1 py-1 text-xs outline-none ${
-          isInputDisabled
-            ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
-            : 'border-gray-300 bg-white text-gray-700 focus:border-gray-400'
-        }`}
-        aria-label={`Month for ${taskName || 'task'}`}
-      >
-        <option value="">MM</option>
-        {monthOptions.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
-      <span className="text-gray-400">/</span>
-      <select
-        value={day}
+        onCalendarOpen={() => setIsAnyCalendarOpen(true)}
+        onCalendarClose={handleCalendarClose}
         disabled={isInputDisabled}
-        onChange={(event) => setDay(event.target.value)}
-        onKeyDown={handleEnterCommit}
-        className={`w-12 rounded-md border px-1 py-1 text-xs outline-none ${
-          isInputDisabled
-            ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
-            : 'border-gray-300 bg-white text-gray-700 focus:border-gray-400'
-        }`}
-        aria-label={`Day for ${taskName || 'task'}`}
-      >
-        <option value="">DD</option>
-        {dayOptions.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
-      <span className="text-gray-400">/</span>
-      <select
-        value={year}
+        dateFormat="MM/dd/yyyy"
+        placeholderText="Date"
+        todayButton="Today"
+        showMonthDropdown
+        showYearDropdown
+        dropdownMode="select"
+        yearDropdownItemNumber={11}
+        minDate={new Date(currentYear, 0, 1)}
+        maxDate={new Date(currentYear + 10, 11, 31)}
+        popperClassName="z-50"
+        className={`w-28 ${sharedInputClasses}`}
+        ariaLabelledBy={`Due date for ${taskName || 'task'}`}
+      />
+      <input
+        type="text"
+        inputMode="numeric"
+        maxLength={5}
+        value={timeText}
         disabled={isInputDisabled}
-        onChange={(event) => setYear(event.target.value)}
+        onChange={(event) => {
+          setTimeText(formatTimeInput(event.target.value))
+        }}
         onKeyDown={handleEnterCommit}
-        className={`w-16 rounded-md border px-2 py-1 text-xs outline-none ${
-          isInputDisabled
-            ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
-            : 'border-gray-300 bg-white text-gray-700 focus:border-gray-400'
-        }`}
-        aria-label={`Year for ${taskName || 'task'}`}
-      >
-        <option value="">YYYY</option>
-        {yearOptions.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
-      <select
-        value={hour}
-        disabled={isInputDisabled}
-        onChange={(event) => setHour(event.target.value)}
-        onKeyDown={handleEnterCommit}
-        className={`w-14 rounded-md border px-2 py-1 text-xs outline-none ${
-          isInputDisabled
-            ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
-            : 'border-gray-300 bg-white text-gray-700 focus:border-gray-400'
-        }`}
-        aria-label={`Hour for ${taskName || 'task'} (optional)`}
-      >
-        <option value="">hh</option>
-        {hourOptions.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
-      <span className="text-gray-400">:</span>
-      <select
-        value={minute}
-        disabled={isInputDisabled}
-        onChange={(event) => setMinute(event.target.value)}
-        onKeyDown={handleEnterCommit}
-        className={`w-14 rounded-md border px-2 py-1 text-xs outline-none ${
-          isInputDisabled
-            ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
-            : 'border-gray-300 bg-white text-gray-700 focus:border-gray-400'
-        }`}
-        aria-label={`Minute for ${taskName || 'task'} (optional)`}
-      >
-        <option value="">mm</option>
-        {minuteOptions.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
+        placeholder="hh:mm"
+        className={`w-24 ${sharedInputClasses}`}
+        aria-label={`Due time for ${taskName || 'task'} (optional)`}
+      />
       <select
         value={meridiem}
         disabled={isInputDisabled}
         onChange={(event) => setMeridiem(event.target.value)}
         onKeyDown={handleEnterCommit}
-        className={`w-14 rounded-md border px-2 py-1 text-xs outline-none ${
-          isInputDisabled
-            ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
-            : 'border-gray-300 bg-white text-gray-700 focus:border-gray-400'
-        }`}
-        aria-label={`AM or PM for ${taskName || 'task'}`}
+        className={`w-16 ${sharedInputClasses}`}
+        aria-label={`AM or PM for ${taskName || 'task'} (optional)`}
       >
         <option value="AM">AM</option>
         <option value="PM">PM</option>

@@ -233,10 +233,10 @@ function Todo() {
           return (
             <div
               key={task.id}
-              className={`overflow-hidden transition-all duration-300 ease-in-out ${
+              className={`transition-all duration-300 ease-in-out ${
                 isAnimatingOut
-                  ? 'max-h-0 opacity-0 -translate-y-2 mb-0'
-                  : 'max-h-28 opacity-100 translate-y-0 mb-3'
+                  ? 'overflow-hidden max-h-0 opacity-0 -translate-y-2 mb-0'
+                  : 'overflow-visible max-h-28 opacity-100 translate-y-0 mb-3'
               }`}
             >
               <div

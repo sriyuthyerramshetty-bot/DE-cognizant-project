@@ -32,6 +32,7 @@
         "email": "Email",
         "phone": "Phone Number",
         "address": "Address",
-        "submitButton": "Place Order"
+        "submitButton": "Place Order",
+        "saveCheckoutButton": "Save Checkout"
     }
 }

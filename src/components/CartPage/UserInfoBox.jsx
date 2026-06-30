@@ -1,6 +1,13 @@
-import TextAsset from '../assets/TextAssets.json'
+import CheckoutButton from './CheckoutButton.jsx'
+import SaveCheckoutButton from './SaveCheckoutButton.jsx';
+import { useCart } from '../../context/CartContext.jsx'
+import TextAsset from '../../assets/TextAssets.json'
+import { Save } from 'lucide-react';
 
 function UserInfoBox () {
+
+    const { cart } = useCart();
+
     return (
         <div className="flex-1 border rounded-lg shadow-md p-6">
             <h2 className="text-xl font-semibold mb-4">{TextAsset.UserInfoBox.title}</h2>
@@ -21,9 +28,10 @@ function UserInfoBox () {
                     <label className="text-sm text-gray-600">{TextAsset.UserInfoBox.address}</label>
                     <input type="text" placeholder="123 Main St" className="border rounded-md px-3 py-2 text-sm outline-none focus:border-gray-400" />
                 </div>
-                <button type="submit" className="mt-2 bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 transition-colors">
-                    {TextAsset.UserInfoBox.submitButton}
-                </button>
+                <div className="flex flex-col gap-0.1">
+                    <CheckoutButton cart={cart} />
+                    <SaveCheckoutButton cart={cart} />
+                </div>
             </form>
         </div>
     )

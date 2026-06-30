@@ -1,5 +1,5 @@
-import OrderSummaryBox from '../components/OrderSummaryBox.jsx';
-import UserInfoBox from '../components/UserInfoBox.jsx';
+import OrderSummaryBox from '../components/CartPage/OrderSummaryBox.jsx';
+import UserInfoBox from '../components/CartPage/UserInfoBox.jsx';
 import { useCart } from '../context/CartContext.jsx'
 import TextAsset from '../assets/TextAssets.json'
 

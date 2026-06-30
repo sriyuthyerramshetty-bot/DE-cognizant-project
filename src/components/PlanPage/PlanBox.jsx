@@ -1,7 +1,7 @@
 import AddToCartButton from './AddToCartButton.jsx'
-import { useCart } from '../context/CartContext.jsx'
+import { useCart } from '../../context/CartContext.jsx'
 import { Wifi, Zap, Smartphone, Gauge } from 'lucide-react'
-import TextAsset from '../assets/TextAssets.json'
+import TextAsset from '../../assets/TextAssets.json'
 
 function PlanBox({ plan }) {
 

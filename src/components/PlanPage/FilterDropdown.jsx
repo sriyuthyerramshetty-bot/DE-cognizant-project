@@ -1,4 +1,4 @@
-import TextAsset from '../assets/TextAssets.json'
+import TextAsset from '../../assets/TextAssets.json'
 
 function FilterDropdown ({ filter, setFilter }) {
 

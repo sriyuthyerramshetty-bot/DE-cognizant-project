@@ -43,7 +43,7 @@ function PlanPage({ plans }) {
     );
 
     return (
-        <>
+        <div className="flex h-screen flex-col overflow-hidden">
             {/* Header section */}
             <div className="pt-6 pl-6 pr-6">
                 <h1 className="text-2xl font-semibold">{TextAsset.PlanPage.title}</h1>
@@ -59,8 +59,10 @@ function PlanPage({ plans }) {
             </div>
 
             {/* Display the plans in a grid layout */}
-            <PlanGrid filteredPlans={filteredPlans} />
-        </>
+            <div className="flex-1 min-h-0 overflow-y-auto">
+                <PlanGrid filteredPlans={filteredPlans} />
+            </div>
+        </div>
     )
 }
 

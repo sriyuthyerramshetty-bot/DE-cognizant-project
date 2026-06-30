@@ -8,7 +8,7 @@ export default function Sidebar({ children }) {
   const [expanded, setExpanded] = useState(true)
   
   return (
-      <aside className={`h-screen shrink-0 transition-all duration-300 ${expanded ? 'w-64' : 'w-20'}`}>      <nav className="h-full flex flex-col bg-white border-r shadow-sm">
+      <aside className={`sticky top-0 self-start h-screen shrink-0 transition-all duration-300 ${expanded ? 'w-64' : 'w-20'}`}>      <nav className="h-full flex flex-col bg-white border-r shadow-sm">
         <div className="p-4 pb-2 flex justify-between items-center">
           Todo
           <button

@@ -7,7 +7,7 @@ function CartPage() {
     const { cart, removeFromCart } = useCart();
 
     return (
-        <div className="px-6">
+        <div className="flex h-screen flex-col overflow-hidden px-6">
             {/* Header section */}
             <div className="pt-6 pb-4">
                 <h1 className="text-2xl font-semibold">{TextAsset.CartPage.title}</h1>
@@ -15,7 +15,7 @@ function CartPage() {
             </div>
             
             {/* Two column layout */}
-            <div className="flex gap-6">
+            <div className="flex gap-6 pb-10 flex-1 min-h-0">
 
                 {/* Order Summary box */}
                 <OrderSummaryBox cart={cart} removeFromCart={removeFromCart} />

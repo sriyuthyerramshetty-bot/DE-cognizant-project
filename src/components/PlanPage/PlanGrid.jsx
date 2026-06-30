@@ -1,5 +1,5 @@
 import PlanBox from './PlanBox.jsx';
-import TextAsset from '../assets/TextAssets.json';
+import TextAsset from '../../assets/TextAssets.json';
 
 function PlanGrid ({ filteredPlans }) {
     if (filteredPlans.length === 0) {

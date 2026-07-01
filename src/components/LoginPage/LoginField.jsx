@@ -1,4 +1,4 @@
-function LoginField({ icon, label, type, placeholder }) {
+function LoginField({ icon, label, type, placeholder, value, onChange }) {
     return (
         <>
             <label className="text-sm text-gray-600">{label}</label>
@@ -11,6 +11,8 @@ function LoginField({ icon, label, type, placeholder }) {
                 <input
                     type={type}
                     placeholder={placeholder}
+                    value={value}
+                    onChange={onChange}
                     className={`w-full border rounded-md py-2 pr-3 text-sm outline-none focus:border-gray-400 ${icon ? 'pl-9' : 'pl-3'}`}
                 />
             </div>

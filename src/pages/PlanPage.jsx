@@ -1,6 +1,6 @@
-import FilterDropdown from '../components/FilterDropdown.jsx'
-import SearchBar from '../components/SearchBar.jsx'
-import PlanGrid from '../components/PlanGrid.jsx';
+import FilterDropdown from '../components/PlanPage/FilterDropdown.jsx'
+import SearchBar from '../components/PlanPage/SearchBar.jsx'
+import PlanGrid from '../components/PlanPage/PlanGrid.jsx';
 import { useState } from 'react';
 import TextAsset from '../assets/TextAssets.json'
 

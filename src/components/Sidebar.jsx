@@ -1,11 +1,19 @@
-import { MoreVertical, ChevronLast, ChevronFirst } from "lucide-react"
-import { NavLink } from "react-router-dom"
+import { LogOut, ChevronLast, ChevronFirst } from "lucide-react"
+import { NavLink, useNavigate } from "react-router-dom"
 import { useContext, createContext, useState } from "react"
+import { useAuth } from "../context/AuthContext.jsx"
 
 const SidebarContext = createContext()
 
 export default function Sidebar({ children }) {
   const [expanded, setExpanded] = useState(true)
+  const navigate = useNavigate()
+  const { logout } = useAuth()
+
+  const handleLogout = () => {
+    logout()
+    navigate("/login")
+  }
   
   return (
       <aside className={`sticky top-0 self-start h-screen shrink-0 transition-all duration-300 ${expanded ? 'w-64' : 'w-20'}`}>      <nav className="h-full flex flex-col bg-white border-r shadow-sm">
@@ -39,7 +47,13 @@ export default function Sidebar({ children }) {
               <h4 className="font-semibold">John Doe</h4>
               <span className="text-xs text-gray-600">johndoe@gmail.com</span>
             </div>
-            <MoreVertical size={20} />
+            <button
+              onClick={handleLogout}
+              className="p-1.5 rounded-lg text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+              aria-label="Sign out"
+            >
+              <LogOut size={20} />
+            </button>
           </div>
         </div>
       </nav>

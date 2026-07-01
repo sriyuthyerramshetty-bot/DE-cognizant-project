@@ -81,30 +81,46 @@ test.describe('Navigation', () => {
 
   // Page reload preserves active page
 
-  test('reloading /calendar still shows the Calendar page', async ({ page }) => {
+  // Auth state is React-only (no localStorage), so a full page reload resets
+  // isAuthenticated and ProtectedRoute redirects to /login. Each reload test
+  // re-logs-in to verify the route is reachable after re-authentication.
+
+  test('reloading /calendar redirects to /login then restores Calendar page after re-login', async ({ page }) => {
     await home.goToCalendar()
     await page.reload()
+    await expect(page).toHaveURL(/\/login$/)
+    await home.login()
+    await home.goToCalendar()
     await expect(page).toHaveURL(/\/calendar$/)
     await expect(page.getByRole('heading', { name: /calendar/i })).toBeVisible()
   })
 
-  test('reloading /settings still shows the Settings page', async ({ page }) => {
+  test('reloading /settings redirects to /login then restores Settings page after re-login', async ({ page }) => {
     await home.goToSettings()
     await page.reload()
+    await expect(page).toHaveURL(/\/login$/)
+    await home.login()
+    await home.goToSettings()
     await expect(page).toHaveURL(/\/settings$/)
     await expect(page.getByRole('heading', { name: /settings/i })).toBeVisible()
   })
 
-  test('reloading /plan still shows the Plans page', async ({ page }) => {
+  test('reloading /plan redirects to /login then restores Plans page after re-login', async ({ page }) => {
     await home.goToPlans()
     await page.reload()
+    await expect(page).toHaveURL(/\/login$/)
+    await home.login()
+    await home.goToPlans()
     await expect(page).toHaveURL(/\/plan$/)
     await expect(page.getByRole('heading', { name: /^plans$/i })).toBeVisible()
   })
 
-  test('reloading /cart still shows the Cart page', async ({ page }) => {
+  test('reloading /cart redirects to /login then restores Cart page after re-login', async ({ page }) => {
     await home.goToCart()
     await page.reload()
+    await expect(page).toHaveURL(/\/login$/)
+    await home.login()
+    await home.goToCart()
     await expect(page).toHaveURL(/\/cart$/)
     await expect(page.getByRole('heading', { name: /my cart/i })).toBeVisible()
   })

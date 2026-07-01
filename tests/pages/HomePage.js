@@ -26,10 +26,25 @@ export class HomePage {
     // Task editing
     // The text input that appears when a task is in editing mode
     this.taskNameInput = page.locator('[data-task-name-input="true"]')
+
+    // Sidebar logout button
+    this.logoutButton = page.getByRole('button', { name: /sign out/i })
   }
 
+  // ── Auth helpers ───────────────────────────────────────────────────────────
+
+  /** Fills the login form and waits for the home route. */
+  async login() {
+    await this.page.getByPlaceholder('Enter your email').fill('test@test.com')
+    await this.page.getByPlaceholder('Enter your password').fill('password123')
+    await this.page.getByRole('button', { name: /sign in/i }).click()
+    await this.page.waitForURL(/\/$/, { timeout: 10_000 })
+  }
+
+  /** Navigates to the app — logs in first since all routes are protected. */
   async goto() {
-    await this.page.goto('/')
+    await this.page.goto('/login')
+    await this.login()
   }
 
   // Task locators

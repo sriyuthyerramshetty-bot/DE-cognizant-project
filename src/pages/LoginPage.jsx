@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
+import { checkLogin } from '../../server/backend.js';
 import LoginField from '../components/LoginPage/LoginField.jsx';
 import TextAsset from '../assets/TextAssets.json'
 import { Mail, Lock } from 'lucide-react';
@@ -9,13 +11,23 @@ function LoginPage() {
     const { login } = useAuth();
     const navigate = useNavigate();
 
+    // State for email and password input fields
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+
     // Handle form submission for sign in
     const handleSignIn = (e) => {
         e.preventDefault();
         // No backend yet — any sign in succeeds. Mark the user as
         // authenticated and send them to the home page.
-        login();
-        navigate('/');
+        const result = checkLogin(email, password); // Call the backend function to check login
+        if (result.success) {
+            login();
+            navigate('/');
+        } else {
+            // Handle login failure (e.g., show an error message)
+            console.error(result.message);
+        }
     };
 
     return (
@@ -37,8 +49,10 @@ function LoginPage() {
                     <LoginField 
                         icon={<Mail size={16} />}
                         label={TextAsset.LoginPage.email} 
-                        type="email" 
+                        type="email"
                         placeholder={TextAsset.LoginPage.emailPlaceholder}
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
                     />
                 </div>
 
@@ -49,6 +63,8 @@ function LoginPage() {
                         label={TextAsset.LoginPage.password} 
                         type="password" 
                         placeholder={TextAsset.LoginPage.passwordPlaceholder} 
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
                     />
                 </div>
 

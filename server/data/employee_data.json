@@ -1,0 +1,27 @@
+{
+    "employee1": {
+        "name": "John Doe",
+        "email": "johndoe@gmail.com",
+        "password": "password123"
+    },
+    "employee2": {
+        "name": "Jane Smith",
+        "email": "janesmith@gmail.com",
+        "password": "password456"
+    },
+    "employee3": {
+        "name": "Michael Brown",
+        "email": "michaelbrown@gmail.com",
+        "password": "password789"
+    },
+    "employee4": {
+        "name": "Emily Davis",
+        "email": "emilydavis@gmail.com",
+        "password": "password012"
+    },
+    "employee5": {
+        "name": "David Wilson",
+        "email": "davidwilson@gmail.com",
+        "password": "password345"
+    } 
+}

@@ -363,7 +363,7 @@ function Todo() {
         onClick={handleAddTask}
         disabled={isAddTaskDisabled}
       >
-        + Add New Task
+        + Add Task
       </button>
     </div>
   )

@@ -5,8 +5,9 @@ import CalendarPage from './pages/CalendarPage.jsx'
 import SettingsPage from './pages/SettingsPage.jsx'
 import PlanPage from './pages/PlanPage.jsx'
 import CartPage from './pages/CartPage.jsx'
+import CustomersPage from './pages/CustomersPage.jsx'
 import Sidebar, { SidebarItem } from './components/Sidebar.jsx'
-import { Home, Calendar, Settings, GlobeCheck, ShoppingCart } from 'lucide-react'
+import { Home, Calendar, Settings, GlobeCheck, ShoppingCart, Users, SquareCheck } from 'lucide-react'
 import { plans } from './data/data.js'
 import { CartProvider } from './context/CartContext.jsx'
 import { UserInfoProvider } from './context/UserInfoContext.jsx'
@@ -17,7 +18,8 @@ function App() {
       <UserInfoProvider>
         <main className="App flex min-h-screen">
           <Sidebar>
-            <SidebarItem icon={<Home />} text="Home" to="/" end />
+            <SidebarItem icon={<Users />} text="Customers" to="/customers" />
+            <SidebarItem icon={<SquareCheck />} text="Todo" to="/" end />
             <SidebarItem icon={<Calendar />} text="Calendar" to="/calendar" />
             <SidebarItem icon={<Settings />} text="Settings" to="/settings" />
             <SidebarItem icon={<GlobeCheck />} text="Plans" to="/plan" />
@@ -31,6 +33,7 @@ function App() {
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/plan" element={<PlanPage plans={plans} />} />
               <Route path="/cart" element={<CartPage />} />
+              <Route path="/customers" element={<CustomersPage />} />
             </Routes>
           </section>
         </main>

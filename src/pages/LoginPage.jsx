@@ -65,6 +65,7 @@ function LoginPage() {
                         placeholder={TextAsset.LoginPage.passwordPlaceholder} 
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
+                        toggleable
                     />
                 </div>
 

@@ -1,24 +1,13 @@
-import { useEffect, useRef, useState } from 'react'
+import { useContext, useEffect, useRef, useState } from 'react'
 import { Check, Pencil, Trash2 } from 'lucide-react'
 import DueDateInput from '../components/DueDateInput'
 import useTaskReminders from '../hooks/useTaskReminders'
+import { TodoContext } from '../context/TodoContext'
 
 function Todo() {
-  const [tasks, setTasks] = useState([
-    {
-      id: 1,
-      name: 'Jogging',
-      isEditing: false,
-      isCompleted: false,
-      dueAt: '',
-      reminderAt: null,
-      reminderNotifiedAt: null,
-    },
-  ])
-  const [view, setView] = useState('active')
+  const { tasks, setTasks, view, setView, nextId, setNextId } = useContext(TodoContext)
   const [removingTaskIds, setRemovingTaskIds] = useState(new Set())
   const [restoringTaskIds, setRestoringTaskIds] = useState(new Set())
-  const [nextId, setNextId] = useState(2)
   const inputRef = useRef(null)
   const editingTaskId = tasks.find((task) => task.isEditing)?.id
   const hasPendingUnnamedTask = tasks.some(
@@ -209,14 +198,14 @@ function Todo() {
 
   return (
     <div className="relative flex h-screen flex-col overflow-hidden p-8">
-      <h1 className="text-2xl font-semibold">Good Morning, Sriyuth!</h1>
-      <div className="mt-2 flex items-center justify-between">
-        <p className="text-slate-600">Where would you like to start today?</p>
+      <div className="relative mb-6">
+        <h1 className="text-2xl font-semibold">Good Morning, Sriyuth!</h1>
+        <p className="mt-2 text-slate-600">Where would you like to start today?</p>
 
         <select
           value={view}
           onChange={(e) => setView(e.target.value)}
-          className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 outline-none focus:border-gray-400"
+          className="absolute right-0 top-9 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 outline-none focus:border-gray-400"
           aria-label="Task category"
         >
           <option value="active">Active</option>
@@ -224,7 +213,7 @@ function Todo() {
         </select>
       </div>
 
-      <main className="relative z-0 mt-6 min-h-0 flex-1 overflow-y-auto pr-1 pb-24">
+      <main className="relative z-0 min-h-0 flex-1 overflow-y-auto pr-1 pb-24">
         {visibleTasks.map((task) => {
           const isRemoving = removingTaskIds.has(task.id)
           const isRestoring = restoringTaskIds.has(task.id)

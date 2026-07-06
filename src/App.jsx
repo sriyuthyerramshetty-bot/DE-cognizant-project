@@ -11,32 +11,35 @@ import { Home, Calendar, Settings, GlobeCheck, ShoppingCart, Users, SquareCheck 
 import { plans } from './data/data.js'
 import { CartProvider } from './context/CartContext.jsx'
 import { UserInfoProvider } from './context/UserInfoContext.jsx'
+import { TodoProvider } from './context/TodoContext.jsx'
 
 function App() {
   return (
     <CartProvider>
       <UserInfoProvider>
-        <main className="App flex min-h-screen">
-          <Sidebar>
-            <SidebarItem icon={<Users />} text="Customers" to="/customers" />
-            <SidebarItem icon={<SquareCheck />} text="Todo" to="/" end />
-            <SidebarItem icon={<Calendar />} text="Calendar" to="/calendar" />
-            <SidebarItem icon={<Settings />} text="Settings" to="/settings" />
-            <SidebarItem icon={<GlobeCheck />} text="Plans" to="/plan" />
-            <SidebarItem icon={<ShoppingCart />} text="Cart" to="/cart" />
-          </Sidebar>
+        <TodoProvider>
+          <main className="App flex min-h-screen">
+            <Sidebar>
+              <SidebarItem icon={<Users />} text="Customers" to="/customers" />
+              <SidebarItem icon={<SquareCheck />} text="Todo" to="/" end />
+              <SidebarItem icon={<Calendar />} text="Calendar" to="/calendar" />
+              <SidebarItem icon={<Settings />} text="Settings" to="/settings" />
+              <SidebarItem icon={<GlobeCheck />} text="Plans" to="/plan" />
+              <SidebarItem icon={<ShoppingCart />} text="Cart" to="/cart" />
+            </Sidebar>
 
-          <section className="flex-1">
-            <Routes>
-              <Route path="/" element={<Todo />} />
-              <Route path="/calendar" element={<CalendarPage />} />
-              <Route path="/settings" element={<SettingsPage />} />
-              <Route path="/plan" element={<PlanPage plans={plans} />} />
-              <Route path="/cart" element={<CartPage />} />
-              <Route path="/customers" element={<CustomersPage />} />
-            </Routes>
-          </section>
-        </main>
+            <section className="flex-1">
+              <Routes>
+                <Route path="/" element={<Todo />} />
+                <Route path="/calendar" element={<CalendarPage />} />
+                <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/plan" element={<PlanPage plans={plans} />} />
+                <Route path="/cart" element={<CartPage />} />
+                <Route path="/customers" element={<CustomersPage />} />
+              </Routes>
+            </section>
+          </main>
+        </TodoProvider>
       </UserInfoProvider>
     </CartProvider>
   )

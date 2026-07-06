@@ -1,17 +1,18 @@
-import { createContext, useMemo, useState } from 'react'
+import { createContext, useCallback, useMemo, useState } from 'react'
 import customersData from '../data/customers.json'
 
 export const CustomerContext = createContext(null)
 
 export function CustomerProvider({ children }) {
-  const [customers, setCustomers] = useState(customersData ?? [])      // master list
-  const [selectedCustomers, setSelectedCustomers] = useState([])       // added by phone
-  const [lookupPhone, setLookupPhone] = useState('')                   // input value
+  const [customers, setCustomers] = useState(customersData ?? [])      
+  const [selectedCustomers, setSelectedCustomers] = useState([])       
+  const [lookupPhone, setLookupPhone] = useState('')                   
   const [lookupError, setLookupError] = useState('')
+  const [activeCustomerId, setActiveCustomerId] = useState(null)
 
-  const normalizePhone = (value) => value.replace(/\D/g, '')
+  const normalizePhone = useCallback((value) => value.replace(/\D/g, ''), [])
 
-  const addCustomerByPhone = (phoneInput) => {
+  const addCustomerByPhone = useCallback((phoneInput) => {
     const normalized = normalizePhone(phoneInput)
     const match = customers.find((c) => normalizePhone(c.phone) === normalized)
 
@@ -20,12 +21,33 @@ export function CustomerProvider({ children }) {
       return false
     }
 
-    setSelectedCustomers((prev) =>
-      prev.some((c) => c.id === match.id) ? prev : [...prev, match]
-    )
+    setSelectedCustomers((prev) => {
+      if (prev.some((customer) => customer.id === match.id)) {
+        return prev
+      }
+
+      return [...prev, match]
+    })
+    setActiveCustomerId(match.id)
     setLookupError('')
     return true
-  }
+  }, [customers, normalizePhone])
+
+  const activeCustomer = selectedCustomers.find(
+    (customer) => customer.id === activeCustomerId,
+  ) ?? null
+
+  const selectActiveCustomer = useCallback((customerId) => {
+    const isCustomerAvailable = selectedCustomers.some(
+      (customer) => customer.id === customerId,
+    )
+
+    if (!isCustomerAvailable) {
+      return
+    }
+
+    setActiveCustomerId(customerId)
+  }, [selectedCustomers])
 
   const value = useMemo(() => ({
     customers,
@@ -36,7 +58,19 @@ export function CustomerProvider({ children }) {
     setLookupPhone,
     lookupError,
     addCustomerByPhone,
-  }), [customers, selectedCustomers, lookupPhone, lookupError])
+    activeCustomerId,
+    activeCustomer,
+    selectActiveCustomer,
+  }), [
+    customers,
+    selectedCustomers,
+    lookupPhone,
+    lookupError,
+    addCustomerByPhone,
+    activeCustomerId,
+    activeCustomer,
+    selectActiveCustomer,
+  ])
 
   return <CustomerContext.Provider value={value}>{children}</CustomerContext.Provider>
 }

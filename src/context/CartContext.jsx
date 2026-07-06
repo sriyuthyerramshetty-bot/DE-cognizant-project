@@ -1,20 +1,55 @@
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useMemo, useState } from 'react';
+import { CustomerContext } from './CustomerContext.jsx';
 
 const CartContext = createContext();
 
 export function CartProvider({ children }) {
-    const [cart, setCart] = useState([]);
+    const { activeCustomerId } = useContext(CustomerContext);
+    const [cartByCustomerId, setCartByCustomerId] = useState({});
+
+    const cart = useMemo(() => {
+        if (!activeCustomerId) {
+            return [];
+        }
+
+        return cartByCustomerId[activeCustomerId] ?? [];
+    }, [activeCustomerId, cartByCustomerId]);
 
     const addToCart = (plan) => {
-        setCart((prev) => [...prev, plan]);
+        if (!activeCustomerId) {
+            return;
+        }
+
+        setCartByCustomerId((previousCarts) => {
+            const currentCart = previousCarts[activeCustomerId] ?? [];
+            if (currentCart.some((cartPlan) => cartPlan.id === plan.id)) {
+                return previousCarts;
+            }
+
+            return {
+                ...previousCarts,
+                [activeCustomerId]: [...currentCart, plan],
+            };
+        });
     };
 
     const removeFromCart = (planId) => {
-        setCart((prev) => prev.filter((p) => p.id !== planId));
+        if (!activeCustomerId) {
+            return;
+        }
+
+        setCartByCustomerId((previousCarts) => {
+            const currentCart = previousCarts[activeCustomerId] ?? [];
+
+            return {
+                ...previousCarts,
+                [activeCustomerId]: currentCart.filter((plan) => plan.id !== planId),
+            };
+        });
     };
 
     return (
-        <CartContext.Provider value={{ cart, addToCart, removeFromCart }}>
+        <CartContext.Provider value={{ cart, addToCart, removeFromCart, cartByCustomerId }}>
             {children}
         </CartContext.Provider>
     );

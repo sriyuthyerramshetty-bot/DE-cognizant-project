@@ -7,19 +7,15 @@ import { useContext } from 'react';
 
 function CartPage() {
     const { cart, removeFromCart } = useCart();
-    const { selectedCustomers } = useContext(CustomerContext);
+    const { activeCustomer } = useContext(CustomerContext);
 
     return (
         <div className="flex h-screen flex-col overflow-hidden px-6">
             {/* Header section */}
             <div className="pt-6 pb-4">
                 <h1 className="text-2xl font-semibold">
-                    {selectedCustomers.length > 0
-                        ? selectedCustomers.map((customer) => (
-                            <p key={customer.id}>
-                                {customer.firstName} {customer.lastName}'s Cart
-                            </p>
-                            ))
+                    {activeCustomer
+                        ? `${activeCustomer.firstName} ${activeCustomer.lastName}'s Cart`
                         : TextAsset.CartPage.title}
                 </h1>
                 <p className="mt-2 text-slate-600">{TextAsset.CartPage.subtitle}</p>

@@ -1,32 +1,52 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
-import { checkLogin } from '../../server/backend.js';
 import LoginField from '../components/LoginPage/LoginField.jsx';
 import TextAsset from '../assets/TextAssets.json'
 import { Mail, Lock } from 'lucide-react';
 
+// Translate Firebase auth error codes into friendly, non-revealing messages.
+function getAuthErrorMessage(code) {
+    switch (code) {
+        case 'auth/invalid-email':
+            return 'Please enter a valid email address.';
+        case 'auth/user-disabled':
+            return 'This account has been disabled.';
+        case 'auth/invalid-credential':
+        case 'auth/user-not-found':
+        case 'auth/wrong-password':
+            return 'Invalid email or password.';
+        case 'auth/too-many-requests':
+            return 'Too many attempts. Please try again later.';
+        default:
+            return 'Something went wrong. Please try again.';
+    }
+}
+
 function LoginPage() {
-    // Get the login function from AuthContext and navigate function from react-router-dom
-    const { login } = useAuth();
+    // Get the sign-in function from AuthContext and the navigate helper.
+    const { signIn } = useAuth();
     const navigate = useNavigate();
 
-    // State for email and password input fields
+    // Input fields plus error/submitting state for UI feedback.
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [error, setError] = useState('');
+    const [submitting, setSubmitting] = useState(false);
 
-    // Handle form submission for sign in
-    const handleSignIn = (e) => {
+    // Handle form submission for sign in. Await Firebase, navigate on success,
+    // and surface a friendly message on failure.
+    const handleSignIn = async (e) => {
         e.preventDefault();
-        // No backend yet — any sign in succeeds. Mark the user as
-        // authenticated and send them to the home page.
-        const result = checkLogin(email, password); // Call the backend function to check login
-        if (result.success) {
-            login();
+        setError('');
+        setSubmitting(true);
+        try {
+            await signIn(email, password);
             navigate('/');
-        } else {
-            // Handle login failure (e.g., show an error message)
-            console.error(result.message);
+        } catch (err) {
+            setError(getAuthErrorMessage(err.code));
+        } finally {
+            setSubmitting(false);
         }
     };
 
@@ -69,12 +89,18 @@ function LoginPage() {
                     />
                 </div>
 
+                {/* Error message */}
+                {error && (
+                    <p className="text-sm text-red-600" role="alert">{error}</p>
+                )}
+
                 {/* Sign In button */}
                 <button
                     type="submit"
-                    className="mt-2 bg-red-500 hover:bg-red-600 text-white py-2 px-4 rounded-md transition-colors"
+                    disabled={submitting}
+                    className="mt-2 bg-red-500 hover:bg-red-600 text-white py-2 px-4 rounded-md transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                    {TextAsset.LoginPage.signInButton}
+                    {submitting ? 'Signing in…' : TextAsset.LoginPage.signInButton}
                 </button>
             </form>
         </div>

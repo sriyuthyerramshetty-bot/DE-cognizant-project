@@ -21,6 +21,10 @@
             "Price": "Price",
             "Speed": "Speed",
             "Best Value": "Best Value"
+        },
+        "sort": {
+            "asc": "↑",
+            "desc": "↓"
         }
     },
     "LoginPage": {

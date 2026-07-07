@@ -49,6 +49,40 @@ export function CustomerProvider({ children }) {
     setActiveCustomerId(customerId)
   }, [selectedCustomers])
 
+  const removeSelectedCustomer = useCallback((customerId) => {
+    setSelectedCustomers((previousCustomers) => {
+      const removedIndex = previousCustomers.findIndex(
+        (customer) => customer.id === customerId,
+      )
+
+      if (removedIndex === -1) {
+        return previousCustomers
+      }
+
+      const nextCustomers = previousCustomers.filter(
+        (customer) => customer.id !== customerId,
+      )
+
+      setActiveCustomerId((currentActiveId) => {
+        if (currentActiveId !== customerId) {
+          return currentActiveId
+        }
+
+        if (nextCustomers.length === 0) {
+          return null
+        }
+
+        const fallbackIndex = removedIndex < nextCustomers.length
+          ? removedIndex
+          : nextCustomers.length - 1
+
+        return nextCustomers[fallbackIndex].id
+      })
+
+      return nextCustomers
+    })
+  }, [])
+
   const value = useMemo(() => ({
     customers,
     setCustomers,
@@ -61,6 +95,7 @@ export function CustomerProvider({ children }) {
     activeCustomerId,
     activeCustomer,
     selectActiveCustomer,
+    removeSelectedCustomer,
   }), [
     customers,
     selectedCustomers,
@@ -70,6 +105,7 @@ export function CustomerProvider({ children }) {
     activeCustomerId,
     activeCustomer,
     selectActiveCustomer,
+    removeSelectedCustomer,
   ])
 
   return <CustomerContext.Provider value={value}>{children}</CustomerContext.Provider>

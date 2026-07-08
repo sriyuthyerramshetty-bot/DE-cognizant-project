@@ -1,20 +1,13 @@
-import { LogOut, ChevronLast, ChevronFirst } from "lucide-react"
-import { NavLink, useNavigate } from "react-router-dom"
+import EmployeeTagBox from "./EmployeeTagBox.jsx"
+import { ChevronLast, ChevronFirst } from "lucide-react"
+import { NavLink } from "react-router-dom"
 import { useContext, createContext, useState } from "react"
-import { useAuth } from "../context/AuthContext.jsx"
 
 const SidebarContext = createContext()
 
 export default function Sidebar({ children }) {
   const [expanded, setExpanded] = useState(true)
-  const navigate = useNavigate()
-  const { logout } = useAuth()
 
-  const handleLogout = () => {
-    logout()
-    navigate("/login")
-  }
-  
   return (
       <aside className={`sticky top-0 self-start h-screen shrink-0 transition-all duration-300 ${expanded ? 'w-64' : 'w-20'}`}>      <nav className="h-full flex flex-col bg-white border-r shadow-sm">
         <div className="p-4 pb-2 flex justify-between items-center">
@@ -31,30 +24,8 @@ export default function Sidebar({ children }) {
           <ul className="flex-1 px-3">{children}</ul>
         </SidebarContext.Provider>
 
-        <div className="border-t flex p-3">
-          <img
-            src="https://ui-avatars.com/api/?background=c7d2fe&color=3730a3&bold=true"
-            alt=""
-            className="w-10 h-10 rounded-md"
-          />
-          <div
-            className={`
-              flex justify-between items-center
-              overflow-hidden transition-all ${expanded ? "w-52 ml-3" : "w-0"}
-          `}
-          >
-            <div className="leading-4">
-              <h4 className="font-semibold">John Doe</h4>
-              <span className="text-xs text-gray-600">johndoe@gmail.com</span>
-            </div>
-            <button
-              onClick={handleLogout}
-              className="p-1.5 rounded-lg text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-              aria-label="Sign out"
-            >
-              <LogOut size={20} />
-            </button>
-          </div>
+        <div className="border-t p-3">
+          <EmployeeTagBox expanded={expanded} />
         </div>
       </nav>
     </aside>

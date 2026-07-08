@@ -1,5 +1,6 @@
 import FilterDropdown from '../components/PlanPage/FilterDropdown.jsx'
 import SearchBar from '../components/PlanPage/SearchBar.jsx'
+import OrderByButton from '../components/PlanPage/OrderByButton.jsx';
 import PlanGrid from '../components/PlanPage/PlanGrid.jsx';
 import { useState } from 'react';
 import TextAsset from '../assets/TextAssets.json'
@@ -9,6 +10,8 @@ function PlanPage({ plans }) {
     // State to hold the search input value
     const [searchInput, setSearchInput] = useState("");
     const [filter, setFilter] = useState("all");
+    // Sort direction for the Price/Speed sort, toggled by the OrderByButton.
+    const [sortOrder, setSortOrder] = useState("asc");
 
     // First apply dropdown filter
     const typeFilters = ['5G', 'Broadband', 'Mobile'];
@@ -18,16 +21,17 @@ function PlanPage({ plans }) {
         return true; // 'all', 'Price', 'Speed' show everything
     });
 
-    // Then sort if needed
+    // Then sort if needed. `direction` flips the comparison for descending.
+    const direction = sortOrder === 'asc' ? 1 : -1;
     const sortedPlans = [...dropdownFiltered].sort((a, b) => {
         if (filter === 'Speed') {
             const toMbps = (s) => {
                 const val = parseFloat(s);
                 return s.toLowerCase().includes('gbps') ? val * 1000 : val;
             };
-            return toMbps(a.speed) - toMbps(b.speed);
+            return (toMbps(a.speed) - toMbps(b.speed)) * direction;
         }
-        if (filter === 'Price') return parseFloat(a.price.replace(/[^0-9.]/g, '')) - parseFloat(b.price.replace(/[^0-9.]/g, ''));
+        if (filter === 'Price') return (parseFloat(a.price.replace(/[^0-9.]/g, '')) - parseFloat(b.price.replace(/[^0-9.]/g, ''))) * direction;
         return 0;
     });
 
@@ -55,6 +59,11 @@ function PlanPage({ plans }) {
                 <div className="flex items-center gap-2">
                     <SearchBar searchInput={searchInput} setSearchInput={setSearchInput} />
                     <FilterDropdown filter={filter} setFilter={setFilter} />
+                    <OrderByButton
+                        sortOrder={sortOrder}
+                        setSortOrder={setSortOrder}
+                        disabled={filter !== 'Price' && filter !== 'Speed'}
+                    />
                 </div>
             </div>
 

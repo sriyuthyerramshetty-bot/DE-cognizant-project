@@ -9,9 +9,15 @@ export default function Sidebar({ children }) {
   const [expanded, setExpanded] = useState(true)
 
   return (
-      <aside className={`sticky top-0 self-start h-screen shrink-0 transition-all duration-300 ${expanded ? 'w-64' : 'w-20'}`}>      <nav className="h-full flex flex-col bg-white border-r shadow-sm">
-        <div className="p-4 pb-2 flex justify-between items-center">
-          Todo
+      <aside className={`sticky top-0 self-start h-screen shrink-0 z-30 transition-all duration-300 ${expanded ? 'w-64' : 'w-20'}`}>      <nav className="h-full flex flex-col bg-white border-r shadow-sm">
+        <div className={`p-4 pb-2 flex items-center ${expanded ? "justify-between" : "justify-center"}`}>
+          <span
+            className={`overflow-hidden whitespace-nowrap font-semibold text-md transition-all ${
+              expanded ? "w-44" : "w-0"
+            }`}
+          >
+            Verizon Employee Portal
+          </span>
           <button
             onClick={() => setExpanded((curr) => !curr)}
             className="p-1.5 rounded-lg bg-gray-50 hover:bg-gray-100"
@@ -43,6 +49,7 @@ export function SidebarItem({ icon, text, to, alert, end = false }) {
             relative flex items-center py-2 px-3 my-1
             font-medium rounded-md cursor-pointer
             transition-colors group
+            ${expanded ? "" : "justify-center"}
             ${
               isActive
                 ? "bg-gradient-to-tr from-indigo-200 to-indigo-100 text-indigo-800"
@@ -52,7 +59,7 @@ export function SidebarItem({ icon, text, to, alert, end = false }) {
         >
           {icon}
           <span
-            className={`overflow-hidden transition-all ${
+            className={`overflow-hidden whitespace-nowrap transition-all ${
               expanded ? "w-52 ml-3" : "w-0"
             }`}
           >
@@ -70,7 +77,7 @@ export function SidebarItem({ icon, text, to, alert, end = false }) {
             <div
               className={`
               absolute left-full rounded-md px-2 py-1 ml-6
-              bg-indigo-100 text-indigo-800 text-sm
+              bg-indigo-100 text-indigo-800 text-sm whitespace-nowrap z-50
               invisible opacity-20 -translate-x-3 transition-all
               group-hover:visible group-hover:opacity-100 group-hover:translate-x-0
           `}

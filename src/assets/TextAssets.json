@@ -1,6 +1,6 @@
 {
     "CartPage": {
-        "title": "My Cart",
+        "title": "Cart",
         "subtitle": "Review your order and enter your details.",
         "orderSummary": "Order Summary",
         "emptyMessage": "No items in cart.",

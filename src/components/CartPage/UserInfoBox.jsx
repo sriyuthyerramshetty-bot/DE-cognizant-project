@@ -15,19 +15,19 @@ function UserInfoBox () {
             <form className="flex flex-col gap-4">
                 <div className="flex flex-col gap-1">
                     <label className="text-sm text-gray-600">{TextAsset.UserInfoBox.name}</label>
-                    <input name="name" value={formData.name} onChange={handleChange} type="text" placeholder="John Doe" className="border rounded-md px-3 py-2 text-sm outline-none focus:border-gray-400" />
+                    <input name="name" value={formData.name} onChange={handleChange} type="text" placeholder={TextAsset.UserInfoBox.namePlaceholder} className="border rounded-md px-3 py-2 text-sm outline-none focus:border-gray-400" />
                 </div>
                 <div className="flex flex-col gap-1">
                     <label className="text-sm text-gray-600">{TextAsset.UserInfoBox.email}</label>
-                    <input name="email" value={formData.email} onChange={handleChange} type="email" placeholder="john@example.com" className="border rounded-md px-3 py-2 text-sm outline-none focus:border-gray-400" />
+                    <input name="email" value={formData.email} onChange={handleChange} type="email" placeholder={TextAsset.UserInfoBox.emailPlaceholder} className="border rounded-md px-3 py-2 text-sm outline-none focus:border-gray-400" />
                 </div>
                 <div className="flex flex-col gap-1">
                     <label className="text-sm text-gray-600">{TextAsset.UserInfoBox.phone}</label>
-                    <input name="phone" value={formData.phone} onChange={handleChange} type="tel" placeholder="xxx-xxx-xxxx" className="border rounded-md px-3 py-2 text-sm outline-none focus:border-gray-400" />
+                    <input name="phone" value={formData.phone} onChange={handleChange} type="tel" placeholder={TextAsset.UserInfoBox.phonePlaceholder} className="border rounded-md px-3 py-2 text-sm outline-none focus:border-gray-400" />
                 </div>
                 <div className="flex flex-col gap-1">
                     <label className="text-sm text-gray-600">{TextAsset.UserInfoBox.address}</label>
-                    <input name="address" value={formData.address} onChange={handleChange} type="text" placeholder="123 Main St" className="border rounded-md px-3 py-2 text-sm outline-none focus:border-gray-400" />
+                    <input name="address" value={formData.address} onChange={handleChange} type="text" placeholder={TextAsset.UserInfoBox.addressPlaceholder} className="border rounded-md px-3 py-2 text-sm outline-none focus:border-gray-400" />
                 </div>
                 <div className="flex flex-col gap-0.1">
                     <CheckoutButton cart={cart} isFormValid={isFormValid} />

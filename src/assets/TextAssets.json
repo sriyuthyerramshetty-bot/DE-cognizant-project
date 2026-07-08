@@ -42,9 +42,13 @@
     "UserInfoBox": {
         "title": "Your Information",
         "name": "Full Name",
+        "namePlaceholder": "Enter your full name",
         "email": "Email",
+        "emailPlaceholder": "Enter your email",
         "phone": "Phone Number",
+        "phonePlaceholder": "xxx-xxx-xxxx",
         "address": "Address",
+        "addressPlaceholder": "Enter your address",
         "submitButton": "Place Order",
         "saveCheckoutButton": "Save Checkout"
     }

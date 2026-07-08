@@ -1,0 +1,182 @@
+[
+	{
+		"id": "CUST-1001",
+		"firstName": "Ava",
+		"lastName": "Thompson",
+		"phone": "5551234001",
+		"email": "ava.thompson@example.com",
+		"address": {
+			"line1": "102 Maple Street",
+			"city": "Austin",
+			"state": "TX",
+			"postalCode": "78701"
+		},
+		"accountStatus": "active",
+		"createdAt": "2025-01-18T10:22:00.000Z"
+	},
+	{
+		"id": "CUST-1002",
+		"firstName": "Noah",
+		"lastName": "Patel",
+		"phone": "5551234002",
+		"email": "noah.patel@example.com",
+		"address": {
+			"line1": "44 Lakeview Drive",
+			"city": "Dallas",
+			"state": "TX",
+			"postalCode": "75201"
+		},
+		"accountStatus": "active",
+		"createdAt": "2025-02-03T13:45:00.000Z"
+	},
+	{
+		"id": "CUST-1003",
+		"firstName": "Mia",
+		"lastName": "Nguyen",
+		"phone": "5551234003",
+		"email": "mia.nguyen@example.com",
+		"address": {
+			"line1": "890 Pine Avenue",
+			"city": "Houston",
+			"state": "TX",
+			"postalCode": "77002"
+		},
+		"accountStatus": "suspended",
+		"createdAt": "2025-02-27T08:10:00.000Z"
+	},
+	{
+		"id": "CUST-1004",
+		"firstName": "Liam",
+		"lastName": "Brooks",
+		"phone": "5551234004",
+		"email": "liam.brooks@example.com",
+		"address": {
+			"line1": "15 Riverbend Court",
+			"city": "San Antonio",
+			"state": "TX",
+			"postalCode": "78205"
+		},
+		"accountStatus": "active",
+		"createdAt": "2025-03-11T17:02:00.000Z"
+	},
+	{
+		"id": "CUST-1005",
+		"firstName": "Sophia",
+		"lastName": "Garcia",
+		"phone": "5551234005",
+		"email": "sophia.garcia@example.com",
+		"address": {
+			"line1": "320 Cypress Lane",
+			"city": "Fort Worth",
+			"state": "TX",
+			"postalCode": "76102"
+		},
+		"accountStatus": "active",
+		"createdAt": "2025-03-29T11:55:00.000Z"
+	},
+	{
+		"id": "CUST-1006",
+		"firstName": "Ethan",
+		"lastName": "Reed",
+		"phone": "5551234006",
+		"email": "ethan.reed@example.com",
+		"address": {
+			"line1": "77 Hilltop Road",
+			"city": "Plano",
+			"state": "TX",
+			"postalCode": "75023"
+		},
+		"accountStatus": "closed",
+		"createdAt": "2025-04-08T09:31:00.000Z"
+	},
+	{
+		"id": "CUST-1007",
+		"firstName": "Isabella",
+		"lastName": "Kim",
+		"phone": "5551234007",
+		"email": "isabella.kim@example.com",
+		"address": {
+			"line1": "918 Sunset Blvd",
+			"city": "Irving",
+			"state": "TX",
+			"postalCode": "75038"
+		},
+		"accountStatus": "active",
+		"createdAt": "2025-04-25T14:18:00.000Z"
+	},
+	{
+		"id": "CUST-1008",
+		"firstName": "James",
+		"lastName": "Ali",
+		"phone": "5551234008",
+		"email": "james.ali@example.com",
+		"address": {
+			"line1": "61 Oak Ridge Way",
+			"city": "Frisco",
+			"state": "TX",
+			"postalCode": "75034"
+		},
+		"accountStatus": "active",
+		"createdAt": "2025-05-12T12:44:00.000Z"
+	},
+	{
+		"id": "CUST-1009",
+		"firstName": "Charlotte",
+		"lastName": "Wright",
+		"phone": "5551234009",
+		"email": "charlotte.wright@example.com",
+		"address": {
+			"line1": "405 Birch Park",
+			"city": "Arlington",
+			"state": "TX",
+			"postalCode": "76010"
+		},
+		"accountStatus": "active",
+		"createdAt": "2025-05-26T16:20:00.000Z"
+	},
+	{
+		"id": "CUST-1010",
+		"firstName": "Benjamin",
+		"lastName": "Lopez",
+		"phone": "5551234010",
+		"email": "benjamin.lopez@example.com",
+		"address": {
+			"line1": "12 Meadow Creek",
+			"city": "El Paso",
+			"state": "TX",
+			"postalCode": "79901"
+		},
+		"accountStatus": "suspended",
+		"createdAt": "2025-06-09T07:58:00.000Z"
+	},
+	{
+		"id": "CUST-1011",
+		"firstName": "Amelia",
+		"lastName": "Rivera",
+		"phone": "5551234011",
+		"email": "amelia.rivera@example.com",
+		"address": {
+			"line1": "730 Aspen Trail",
+			"city": "Lubbock",
+			"state": "TX",
+			"postalCode": "79401"
+		},
+		"accountStatus": "active",
+		"createdAt": "2025-06-21T19:05:00.000Z"
+	},
+	{
+		"id": "CUST-1012",
+		"firstName": "Lucas",
+		"lastName": "Choi",
+		"phone": "5551234012",
+		"email": "lucas.choi@example.com",
+		"address": {
+			"line1": "250 Northfield St",
+			"city": "Corpus Christi",
+			"state": "TX",
+			"postalCode": "78401"
+		},
+		"accountStatus": "active",
+		"createdAt": "2025-07-02T15:14:00.000Z"
+	}
+]

@@ -1,44 +1,80 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { CustomerContext } from './CustomerContext.jsx';
 
 const CartContext = createContext();
 
-// Key the cart lives under in the browser's localStorage.
-const STORAGE_KEY = 'cart';
+// Key the per-customer carts live under in the browser's localStorage.
+const STORAGE_KEY = 'cartByCustomerId';
 
-// Read any previously saved cart out of localStorage. This runs as the lazy
-// initial state so the cart is already populated on the very first render after
-// a reload (no empty flicker). Falls back to an empty cart if nothing is stored
-// or the stored value is somehow corrupt/unparseable.
-function loadCart() {
+// Read any previously saved carts out of localStorage. This runs as the lazy
+// initial state so the carts are already populated on the very first render
+// after a reload (no empty flicker). Falls back to an empty map if nothing is
+// stored or the stored value is somehow corrupt/unparseable.
+function loadCarts() {
     try {
         const stored = localStorage.getItem(STORAGE_KEY);
-        return stored ? JSON.parse(stored) : [];
+        return stored ? JSON.parse(stored) : {};
     } catch {
-        return [];
+        return {};
     }
 }
 
 export function CartProvider({ children }) {
-    const [cart, setCart] = useState(loadCart);
+    const { activeCustomerId } = useContext(CustomerContext);
+    const [cartByCustomerId, setCartByCustomerId] = useState(loadCarts);
 
-    // Persist the cart back to localStorage whenever it changes so the latest
-    // contents survive a page reload. This is the localStorage equivalent of the
+    // Persist every customer's cart back to localStorage whenever they change so
+    // the carts survive a page reload. This is the localStorage equivalent of the
     // "subscribe" pattern used for auth: state changes -> write to storage, and
-    // loadCart() above reads it back on the next load.
+    // loadCarts() above reads it back on the next load.
     useEffect(() => {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(cart));
-    }, [cart]);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(cartByCustomerId));
+    }, [cartByCustomerId]);
+
+    // The active customer's cart, derived from the per-customer map.
+    const cart = useMemo(() => {
+        if (!activeCustomerId) {
+            return [];
+        }
+
+        return cartByCustomerId[activeCustomerId] ?? [];
+    }, [activeCustomerId, cartByCustomerId]);
 
     const addToCart = (plan) => {
-        setCart((prev) => [...prev, plan]);
+        if (!activeCustomerId) {
+            return;
+        }
+
+        setCartByCustomerId((previousCarts) => {
+            const currentCart = previousCarts[activeCustomerId] ?? [];
+            if (currentCart.some((cartPlan) => cartPlan.id === plan.id)) {
+                return previousCarts;
+            }
+
+            return {
+                ...previousCarts,
+                [activeCustomerId]: [...currentCart, plan],
+            };
+        });
     };
 
     const removeFromCart = (planId) => {
-        setCart((prev) => prev.filter((p) => p.id !== planId));
+        if (!activeCustomerId) {
+            return;
+        }
+
+        setCartByCustomerId((previousCarts) => {
+            const currentCart = previousCarts[activeCustomerId] ?? [];
+
+            return {
+                ...previousCarts,
+                [activeCustomerId]: currentCart.filter((plan) => plan.id !== planId),
+            };
+        });
     };
 
     return (
-        <CartContext.Provider value={{ cart, addToCart, removeFromCart }}>
+        <CartContext.Provider value={{ cart, addToCart, removeFromCart, cartByCustomerId }}>
             {children}
         </CartContext.Provider>
     );

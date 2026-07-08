@@ -6,34 +6,39 @@ import SettingsPage from './pages/SettingsPage.jsx'
 import PlanPage from './pages/PlanPage.jsx'
 import CartPage from './pages/CartPage.jsx'
 import LoginPage from './pages/LoginPage.jsx'
+import CustomersPage from './pages/CustomersPage.jsx'
 import MainLayout from './layouts/MainLayout.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
 import { plans } from '../server/data/data.js'
 import { AuthProvider } from './context/AuthContext.jsx'
 import { CartProvider } from './context/CartContext.jsx'
 import { UserInfoProvider } from './context/UserInfoContext.jsx'
+import { TodoProvider } from './context/TodoContext.jsx'
 
 function App() {
   return (
     <AuthProvider>
       <CartProvider>
         <UserInfoProvider>
-          <Routes>
-            {/* Public route — no sidebar */}
-            <Route path="/login" element={<LoginPage />} />
+          <TodoProvider>
+            <Routes>
+              {/* Public route — no sidebar */}
+              <Route path="/login" element={<LoginPage />} />
 
-            {/* Protected routes — redirect to /login when signed out */}
-            <Route element={<ProtectedRoute />}>
-              {/* Shared layout with the sidebar */}
-              <Route element={<MainLayout />}>
-                <Route path="/" element={<Todo />} />
-                <Route path="/plan" element={<PlanPage plans={plans} />} />
-                <Route path="/cart" element={<CartPage />} />
-                <Route path="/calendar" element={<CalendarPage />} />
-                <Route path="/settings" element={<SettingsPage />} />
+              {/* Protected routes — redirect to /login when signed out */}
+              <Route element={<ProtectedRoute />}>
+                {/* Shared layout with the sidebar */}
+                <Route element={<MainLayout />}>
+                  <Route path="/" element={<Todo />} />
+                  <Route path="/plan" element={<PlanPage plans={plans} />} />
+                  <Route path="/cart" element={<CartPage />} />
+                  <Route path="/calendar" element={<CalendarPage />} />
+                  <Route path="/settings" element={<SettingsPage />} />
+                  <Route path="/customers" element={<CustomersPage />} />
+                </Route>
               </Route>
-            </Route>
-          </Routes>
+            </Routes>
+          </TodoProvider>
         </UserInfoProvider>
       </CartProvider>
     </AuthProvider>

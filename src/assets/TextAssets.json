@@ -40,7 +40,7 @@
         "bestValue": "Best Value"
     },
     "UserInfoBox": {
-        "title": "Your Information",
+        "title": "Customer Information",
         "name": "Full Name",
         "namePlaceholder": "Enter your full name",
         "email": "Email",

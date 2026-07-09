@@ -83,6 +83,65 @@ export function CustomerProvider({ children }) {
     })
   }, [])
 
+  const updateActiveCustomerField = useCallback((fieldName, fieldValue) => {
+    setActiveCustomerId((currentActiveId) => {
+      if (!currentActiveId) {
+        return currentActiveId
+      }
+
+      const nextName = String(fieldValue ?? '')
+
+      const applyFieldUpdate = (customer) => {
+        if (customer.id !== currentActiveId) {
+          return customer
+        }
+
+        if (fieldName === 'name') {
+          const nameParts = nextName.trim().split(/\s+/).filter(Boolean)
+          const firstName = nameParts[0] ?? ''
+          const lastName = nameParts.slice(1).join(' ')
+
+          return {
+            ...customer,
+            firstName,
+            lastName,
+          }
+        }
+
+        if (fieldName === 'email') {
+          return {
+            ...customer,
+            email: nextName,
+          }
+        }
+
+        if (fieldName === 'phone') {
+          return {
+            ...customer,
+            phone: nextName,
+          }
+        }
+
+        if (fieldName === 'address') {
+          return {
+            ...customer,
+            address: {
+              ...(customer.address ?? {}),
+              line1: nextName,
+            },
+          }
+        }
+
+        return customer
+      }
+
+      setCustomers((previousCustomers) => previousCustomers.map(applyFieldUpdate))
+      setSelectedCustomers((previousCustomers) => previousCustomers.map(applyFieldUpdate))
+
+      return currentActiveId
+    })
+  }, [])
+
   const value = useMemo(() => ({
     customers,
     setCustomers,
@@ -96,6 +155,7 @@ export function CustomerProvider({ children }) {
     activeCustomer,
     selectActiveCustomer,
     removeSelectedCustomer,
+    updateActiveCustomerField,
   }), [
     customers,
     selectedCustomers,
@@ -106,6 +166,7 @@ export function CustomerProvider({ children }) {
     activeCustomer,
     selectActiveCustomer,
     removeSelectedCustomer,
+    updateActiveCustomerField,
   ])
 
   return <CustomerContext.Provider value={value}>{children}</CustomerContext.Provider>

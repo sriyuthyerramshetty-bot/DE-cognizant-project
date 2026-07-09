@@ -16,7 +16,7 @@ function EmployeeTagBox({ expanded }) {
     }
 
     return (
-        <div className="flex items-center">
+        <div className="flex items-center pl-1.5">
             <img
                 src={`https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=ffa49e&color=ff1100&bold=true`}
                 alt=""

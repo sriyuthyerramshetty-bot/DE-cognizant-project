@@ -1,5 +1,6 @@
 import { Outlet } from 'react-router-dom';
 import Sidebar, { SidebarItem } from '../components/Sidebar.jsx';
+import ChatbotWidget from '../components/Chatbot/ChatbotWidget.jsx';
 import { ListChecks, Users, Calendar, Settings, GlobeCheck, ShoppingCart } from 'lucide-react';
 
 // Layout for the authenticated part of the app: the sidebar plus a content
@@ -20,6 +21,9 @@ function MainLayout() {
             <section className="flex-1">
                 <Outlet />
             </section>
+
+            {/* Floating AI assistant — bottom-right on every authenticated page */}
+            <ChatbotWidget />
         </main>
     );
 }

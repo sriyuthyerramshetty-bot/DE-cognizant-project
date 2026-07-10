@@ -8,7 +8,7 @@
     },
     "PlanPage": {
         "title": "Plans",
-        "subtitle": "Find the plan you are looking for.",
+        "subtitle": "All available plans are listed below.",
         "searchPlaceholder": "Search for plans...",
         "addToCart": "Add to Cart",
         "removeFromCart": "Remove from Cart",
@@ -16,8 +16,9 @@
         "options": {
             "all": "All",
             "5G": "5G",
-            "Broadband": "Broadband",
+            "Fiber": "Fiber",
             "Mobile": "Mobile",
+            "Home Internet": "Home Internet",
             "Price": "Price",
             "Speed": "Speed",
             "Best Value": "Best Value"

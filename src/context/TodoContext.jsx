@@ -64,8 +64,10 @@ export function TodoProvider({ children }) {
     const planLabel = planNames.length > 0 ? planNames.join(', ') : 'saved checkout items'
     const taskName = `Complete checkout for ${customerLabel}: ${planLabel}`
 
+    let found = false;
+
     setTasks((currentTasks) => {
-      let found = false
+      let found1 = false
       const nextTasks = []
 
       for (const task of currentTasks) {
@@ -80,7 +82,8 @@ export function TodoProvider({ children }) {
           continue
         }
 
-        if (!found) {
+        if (!found1) {
+          found1 = true
           found = true
           nextTasks.push({
             ...task,
@@ -90,7 +93,7 @@ export function TodoProvider({ children }) {
         }
       }
 
-      if (!found) {
+      if (!found1) {
         nextTasks.unshift({
           id: Date.now(),
           name: taskName,
@@ -108,7 +111,8 @@ export function TodoProvider({ children }) {
     })
 
     setView('active')
-  }, [])
+    return {found}
+  }, [setView])
 
   const value = useMemo(
     () => ({

@@ -1,0 +1,56 @@
+{
+    "CartPage": {
+        "title": "Cart",
+        "subtitle": "Review your order and enter your details.",
+        "orderSummary": "Order Summary",
+        "emptyMessage": "No items in cart.",
+        "total": "Total"
+    },
+    "PlanPage": {
+        "title": "Plans",
+        "subtitle": "All available plans are listed below.",
+        "searchPlaceholder": "Search for plans...",
+        "addToCart": "Add to Cart",
+        "removeFromCart": "Remove from Cart",
+        "searchError": "No plans found. Try adjusting your search.",
+        "options": {
+            "all": "All",
+            "5G": "5G",
+            "Fiber": "Fiber",
+            "Mobile": "Mobile",
+            "Home Internet": "Home Internet",
+            "Price": "Price",
+            "Speed": "Speed",
+            "Best Value": "Best Value"
+        },
+        "sort": {
+            "asc": "↑",
+            "desc": "↓"
+        }
+    },
+    "LoginPage": {
+        "title": "Verizon Employee Portal",
+        "subtitle": "Sign in to continue",
+        "email": "Email",
+        "emailPlaceholder": "Enter your email",
+        "password": "Password",
+        "passwordPlaceholder": "Enter your password",
+        "signInButton": "Sign In"
+    },
+    "PlanBox": {
+        "bestValue": "Best Value"
+    },
+    "UserInfoBox": {
+        "title": "Your Information",
+        "name": "Full Name",
+        "namePlaceholder": "Enter your full name",
+        "email": "Email",
+        "emailPlaceholder": "Enter your email",
+        "phone": "Phone Number",
+        "phonePlaceholder": "xxx-xxx-xxxx",
+        "address": "Address",
+        "addressPlaceholder": "Enter your address",
+        "submitButton": "Place Order",
+        "saveCheckoutButton": "Save Checkout"
+    }
+}

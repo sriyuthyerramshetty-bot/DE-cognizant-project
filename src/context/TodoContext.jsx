@@ -65,6 +65,7 @@ export function TodoProvider({ children }) {
     const taskName = `Complete checkout for ${customerLabel}: ${planLabel}`
 
     let found = false;
+    let savedTaskId = null
 
     setTasks((currentTasks) => {
       let found1 = false
@@ -85,6 +86,7 @@ export function TodoProvider({ children }) {
         if (!found1) {
           found1 = true
           found = true
+          savedTaskId = task.id
           nextTasks.push({
             ...task,
             name: taskName,
@@ -94,7 +96,7 @@ export function TodoProvider({ children }) {
       }
 
       if (!found1) {
-        nextTasks.unshift({
+        const newTask ={
           id: Date.now(),
           name: taskName,
           isEditing: false,
@@ -104,15 +106,17 @@ export function TodoProvider({ children }) {
           reminderNotifiedAt: null,
           isCheckoutTask: true,
           checkoutCustomerId: customerId ?? null,
-        })
+        }
+        savedTaskId = newTask.id
+        nextTasks.unshift(newTask)
       }
 
       return nextTasks
     })
 
     setView('active')
-    return {found}
-  }, [setView])
+    return {found, taskId: savedTaskId}
+  }, [setTasks, setView])
 
   const value = useMemo(
     () => ({

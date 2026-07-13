@@ -18,9 +18,9 @@ function SaveCheckoutButton({ cart, isFormValid }) {
         const customerName = activeCustomer
             ? `${activeCustomer.firstName ?? ''} ${activeCustomer.lastName ?? ''}`.trim()
             : 'Customer'
+        const customerId = activeCustomer?.id ?? null
 
-        createTodoFromCheckout({ customerName, cart })
-        console.log("Checkout saved:", cart);
+        createTodoFromCheckout({ customerName, cart, customerId })
         markCheckoutSaved()
     };
 

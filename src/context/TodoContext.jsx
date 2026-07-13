@@ -57,24 +57,55 @@ export function TodoProvider({ children }) {
     )
   }, [tasks, view, nextId])
 
-  const createTodoFromCheckout = useCallback(({ customerName, cart }) => {
+  const createTodoFromCheckout = useCallback(({ customerName, cart, customerId }) => {
     const plans = Array.isArray(cart) ? cart : []
     const planNames = plans.map((plan) => plan.name).filter(Boolean)
     const customerLabel = customerName?.trim() || 'Customer'
     const planLabel = planNames.length > 0 ? planNames.join(', ') : 'saved checkout items'
+    const taskName = `Complete checkout for ${customerLabel}: ${planLabel}`
 
-    setTasks((currentTasks) => [
-      {
-        id: Date.now(),
-        name: `Complete checkout for ${customerLabel}: ${planLabel}`,
-        isEditing: false,
-        isCompleted: false,
-        dueAt: '',
-        reminderAt: null,
-        reminderNotifiedAt: null,
-      },
-      ...currentTasks,
-    ])
+    setTasks((currentTasks) => {
+      let found = false
+      const nextTasks = []
+
+      for (const task of currentTasks) {
+        const isSameCustomerCheckoutTask =
+          task.isCheckoutTask === true &&
+          task.checkoutCustomerId &&
+          customerId &&
+          task.checkoutCustomerId === customerId
+
+        if (!isSameCustomerCheckoutTask) {
+          nextTasks.push(task)
+          continue
+        }
+
+        if (!found) {
+          found = true
+          nextTasks.push({
+            ...task,
+            name: taskName,
+            isEditing: false,
+          })
+        }
+      }
+
+      if (!found) {
+        nextTasks.unshift({
+          id: Date.now(),
+          name: taskName,
+          isEditing: false,
+          isCompleted: false,
+          dueAt: '',
+          reminderAt: null,
+          reminderNotifiedAt: null,
+          isCheckoutTask: true,
+          checkoutCustomerId: customerId ?? null,
+        })
+      }
+
+      return nextTasks
+    })
 
     setView('active')
   }, [])

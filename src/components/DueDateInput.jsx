@@ -284,7 +284,8 @@ function DueDateInput({
         yearDropdownItemNumber={11}
         minDate={new Date(currentYear, 0, 1)}
         maxDate={new Date(currentYear + 10, 11, 31)}
-        popperClassName="z-50"
+        portalId='root'
+        popperClassName="!z-[9999]"
         className={`w-28 ${sharedInputClasses}`}
         ariaLabelledBy={`Due date for ${taskName || 'task'}`}
       />

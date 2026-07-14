@@ -1,4 +1,5 @@
 import { ShoppingCart } from 'lucide-react'
+import TextAsset from "../../assets/TextAssets.json"
 
 function AddToCartButton({ addToCart, cart, plan }) {
     const isInCart = cart.some((p) => p.id === plan.id);
@@ -13,7 +14,7 @@ function AddToCartButton({ addToCart, cart, plan }) {
                     : 'bg-red-500 hover:bg-red-600'
             }`}
         >
-            {isInCart ? 'Added' : 'Add to Cart'} <ShoppingCart size={14} />
+            {isInCart ? TextAsset.AddToCartButton.added : TextAsset.AddToCartButton.addToCart} <ShoppingCart size={14} />
         </button>
     )
 }

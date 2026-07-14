@@ -1,4 +1,4 @@
-import { createContext, useMemo, useState } from 'react'
+import { createContext, useCallback, useEffect, useMemo, useState } from 'react'
 
 export const TodoContext = createContext(null)
 
@@ -14,10 +14,109 @@ const initialTasks = [
   },
 ]
 
+const TODO_STORAGE_KEY = 'todoState'
+
+function loadTodoState() {
+  try {
+    const stored = localStorage.getItem(TODO_STORAGE_KEY)
+    if (!stored) {
+      return {
+        tasks: initialTasks,
+        view: 'active',
+        nextId: 2,
+      }
+    }
+
+    const parsed = JSON.parse(stored)
+
+    return {
+      tasks: Array.isArray(parsed.tasks) ? parsed.tasks : initialTasks,
+      view: parsed.view === 'completed' ? 'completed' : 'active',
+      nextId: Number.isFinite(parsed.nextId) ? parsed.nextId : 2,
+    }
+  } catch {
+    return {
+      tasks: initialTasks,
+      view: 'active',
+      nextId: 2,
+    }
+  }
+}
+
+const loadedTodoState = loadTodoState()
+
 export function TodoProvider({ children }) {
-  const [tasks, setTasks] = useState(initialTasks)
-  const [view, setView] = useState('active')
-  const [nextId, setNextId] = useState(2)
+  const [tasks, setTasks] = useState(loadedTodoState.tasks)
+  const [view, setView] = useState(loadedTodoState.view)
+  const [nextId, setNextId] = useState(loadedTodoState.nextId)
+
+  useEffect(() => {
+    localStorage.setItem(
+      TODO_STORAGE_KEY,
+      JSON.stringify({ tasks, view, nextId }),
+    )
+  }, [tasks, view, nextId])
+
+  const createTodoFromCheckout = useCallback(({ customerName, cart, customerId }) => {
+    const plans = Array.isArray(cart) ? cart : []
+    const planNames = plans.map((plan) => plan.name).filter(Boolean)
+    const customerLabel = customerName?.trim() || 'Customer'
+    const planLabel = planNames.length > 0 ? planNames.join(', ') : 'saved checkout items'
+    const taskName = `Complete checkout for ${customerLabel}: ${planLabel}`
+
+    let found = false;
+    let savedTaskId = null
+
+    setTasks((currentTasks) => {
+      let found1 = false
+      const nextTasks = []
+
+      for (const task of currentTasks) {
+        const isSameCustomerCheckoutTask =
+          task.isCheckoutTask === true &&
+          task.checkoutCustomerId &&
+          customerId &&
+          task.checkoutCustomerId === customerId
+
+        if (!isSameCustomerCheckoutTask) {
+          nextTasks.push(task)
+          continue
+        }
+
+        if (!found1) {
+          found1 = true
+          found = true
+          savedTaskId = task.id
+          nextTasks.push({
+            ...task,
+            name: taskName,
+            isEditing: false,
+          })
+        }
+      }
+
+      if (!found1) {
+        const newTask ={
+          id: Date.now(),
+          name: taskName,
+          isEditing: false,
+          isCompleted: false,
+          dueAt: '',
+          reminderAt: null,
+          reminderNotifiedAt: null,
+          isCheckoutTask: true,
+          checkoutCustomerId: customerId ?? null,
+        }
+        savedTaskId = newTask.id
+        nextTasks.unshift(newTask)
+      }
+
+      return nextTasks
+    })
+
+    setView('active')
+    return {found, taskId: savedTaskId}
+  }, [setTasks, setView])
 
   const value = useMemo(
     () => ({
@@ -27,8 +126,9 @@ export function TodoProvider({ children }) {
       setView,
       nextId,
       setNextId,
+      createTodoFromCheckout,
     }),
-    [tasks, view, nextId],
+    [tasks, view, nextId, createTodoFromCheckout],
   )
 
   return <TodoContext.Provider value={value}>{children}</TodoContext.Provider>

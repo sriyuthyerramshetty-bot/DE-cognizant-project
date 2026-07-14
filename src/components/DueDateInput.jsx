@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useState } from 'react'
 import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
 import { formatDateOnly, formatDateTime, isNowOrFuture } from '../utils/dueDate'
@@ -13,7 +13,7 @@ const maybeRequestNotificationPermission = () => {
   }
 }
 
-function DueDateInput({
+const DueDateInput = forwardRef(function DueDateInput({
   taskId,
   taskName,
   value,
@@ -22,7 +22,7 @@ function DueDateInput({
   isCompleted = false,
   isEditable = false,
   onRequestExitEdit,
-}) {
+}, ref) {
   const [selectedDate, setSelectedDate] = useState(null)
   const [timeText, setTimeText] = useState('')
   const [meridiem, setMeridiem] = useState('AM')
@@ -205,6 +205,12 @@ function DueDateInput({
     onCommit(taskId, parsedDue)
   }
 
+  useImperativeHandle(ref, () => ({
+    commitNow: () => {
+      commitValue()
+    },
+  }))
+
   const commitIfLeavingControl = () => {
     if (isInputDisabled) {
       return
@@ -284,7 +290,8 @@ function DueDateInput({
         yearDropdownItemNumber={11}
         minDate={new Date(currentYear, 0, 1)}
         maxDate={new Date(currentYear + 10, 11, 31)}
-        popperClassName="z-50"
+        portalId='root'
+        popperClassName="!z-[9999]"
         className={`w-28 ${sharedInputClasses}`}
         ariaLabelledBy={`Due date for ${taskName || 'task'}`}
       />
@@ -316,5 +323,7 @@ function DueDateInput({
     </div>
   )
 }
+
+)
 
 export default DueDateInput

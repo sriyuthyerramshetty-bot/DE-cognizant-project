@@ -11,9 +11,9 @@ function SaveCheckoutButton({ cart, isFormValid }) {
     const { activeCustomer } = useContext(CustomerContext)
     const { isCheckoutSaved, markCheckoutSaved } = useCart()
     const [notice, setNotice] = useState('')
-    const [isDuePopoverOpen, setIsDuePopoverOpen] = useState(false)
     const [savedCheckoutTaskId, setSavedCheckoutTaskId] = useState(null)
     const dueDateInputRef = useRef(null)
+    const [isDuePopoverOpen, setIsDuePopoverOpen] = useState(false)
 
     // Button is disabled if the cart is empty or the form is invalid
     const isEmpty = cart.length === 0;
@@ -31,7 +31,6 @@ function SaveCheckoutButton({ cart, isFormValid }) {
         const result = createTodoFromCheckout({ customerName, cart, customerId })
         markCheckoutSaved()
         setSavedCheckoutTaskId(result.taskId)
-        setIsDuePopoverOpen(true)
 
         if (result.found) {
             setNotice('Todo item updated successfully!')
@@ -63,13 +62,18 @@ function SaveCheckoutButton({ cart, isFormValid }) {
             : task,
         ),
         )
-        setNotice('Due date saved.')
     }
 
     const handleDoneClick = () => {
         dueDateInputRef.current?.commitNow?.()
         setIsDuePopoverOpen(false)
     }
+
+    const handleNotificationAction = () => {
+        setIsDuePopoverOpen(true)
+    }
+
+
 
     return (
         <>
@@ -86,35 +90,38 @@ function SaveCheckoutButton({ cart, isFormValid }) {
                 >
                     {TextAsset.UserInfoBox.saveCheckoutButton}
                 </button>
-
                 {isDuePopoverOpen && savedTask ? (
-                    <div className="absolute left-1/2 bottom-full z-[100] mb-3 w-72 -translate-x-1/2 rounded-lg border border-gray-300 bg-white p-3 shadow-xl">
-                        <p className="mb-2 text-xs font-semibold text-gray-700">Set due date (optional)</p>
-                        <DueDateInput
-                            ref={dueDateInputRef}
-                            taskId={savedTask.id}
-                            taskName={savedTask.name}
-                            value={savedTask.dueAt}
-                            onCommit={handleTaskDueDateCommit}
-                            onClear={handleTaskDueDateClear}
-                            isCompleted={savedTask.isCompleted}
-                            isEditable
-                        />
-                        <div className="mt-3 flex justify-end">
-                        <button
-                            type="button"
-                            onClick={handleDoneClick}
-                            className="rounded-md border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:bg-gray-50"
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+                        <div
+                            className="w-74 rounded-lg border border-gray-300 bg-white p-3 shadow-xl"
+                            onClick={(event) => event.stopPropagation()}
                         >
-                            Done
-                        </button>
+                            <p className="mb-2 text-xs font-semibold text-gray-700">Set due date (optional)</p>
+                            <DueDateInput
+                                ref={dueDateInputRef}
+                                taskId={savedTask.id}
+                                taskName={savedTask.name}
+                                value={savedTask.dueAt}
+                                onCommit={handleTaskDueDateCommit}
+                                onClear={handleTaskDueDateClear}
+                                isCompleted={savedTask.isCompleted}
+                                isEditable
+                            />
+                            <div className="mt-3 flex justify-end">
+                            <button
+                                type="button"
+                                onClick={handleDoneClick}
+                                className="rounded-md border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:bg-gray-50"
+                            >
+                                Done
+                            </button>
+                        </div>
                     </div>
-                    <div className="absolute left-1/2 -bottom-2 h-4 w-4 -translate-x-1/2 rotate-45 border-r border-b border-gray-300 bg-white" aria-hidden="true" />
                 </div>
             ) : null}
             </div>
 
-            <Notification message={notice} onDone={() => setNotice('')} duration={2600} />
+            <Notification message={notice} onDone={() => setNotice('')} duration={8000} actionLabel="Set due date?" onAction={handleNotificationAction} />
         </>
     )
 }

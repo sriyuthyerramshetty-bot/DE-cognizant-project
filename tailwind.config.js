@@ -6,8 +6,8 @@ module.exports = {
       keyframes: {
         riseFade: {
           "0%": { transform: "translateY(24px)", opacity: "0" },
-          "15%": { transform: "translateY(0)", opacity: "1" },
-          "80%": { transform: "translateY(0)", opacity: "1" },
+          "6%": { transform: "translateY(0)", opacity: "1" },
+          "94%": { transform: "translateY(0)", opacity: "1" },
           "100%": { transform: "translateY(10px)", opacity: "0" },
         },
       },

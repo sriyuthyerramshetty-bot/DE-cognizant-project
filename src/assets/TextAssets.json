@@ -52,5 +52,20 @@
         "addressPlaceholder": "Enter your address",
         "submitButton": "Place Order",
         "saveCheckoutButton": "Save Checkout"
+    },
+    "CardViewButton": {
+        "grid": "Grid View",
+        "list": "List View"
+    },
+    "PlanRowHeader": {
+        "name": "Name",
+        "type": "Type",
+        "speed": "Speed",
+        "price": "Price",
+        "network": "Network"
+    },
+    "AddToCartButton": {
+        "added": "Added",
+        "addToCart": "Add to Cart"
     }
 }

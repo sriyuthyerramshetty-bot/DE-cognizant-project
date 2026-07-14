@@ -3,9 +3,11 @@ import { Check, Pencil, Trash2 } from 'lucide-react'
 import DueDateInput from '../components/DueDateInput'
 import useTaskReminders from '../hooks/useTaskReminders'
 import { TodoContext } from '../context/TodoContext'
+import { useCart } from '../context/CartContext'
 
 function Todo() {
   const { tasks, setTasks, view, setView, nextId, setNextId } = useContext(TodoContext)
+  const { clearCheckoutSavedForCustomer, markCheckoutSaved } = useCart()
   const [removingTaskIds, setRemovingTaskIds] = useState(new Set())
   const [restoringTaskIds, setRestoringTaskIds] = useState(new Set())
   const inputRef = useRef(null)
@@ -179,6 +181,9 @@ function Todo() {
   }
 
   const handleDeleteTask = (taskId) => {
+
+    clearCheckoutSavedForCustomer(tasks.find((task) => task.id === taskId)?.checkoutCustomerId)      
+
     setTasks((currentTasks) =>
       currentTasks.filter((task) => task.id !== taskId),
     )

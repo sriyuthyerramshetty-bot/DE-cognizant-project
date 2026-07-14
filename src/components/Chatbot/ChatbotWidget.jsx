@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { MessageCircle, Minus, Send, Bot, RotateCcw } from 'lucide-react'
 import ChatMessage from './ChatMessage.jsx'
 import TypingIndicator from './TypingIndicator.jsx'
-import { getAssistantReply } from '../../lib/openai.js'
+import { getAssistantReply } from '../../lib/assistant.js'
+import { useAuth } from '../../context/AuthContext.jsx'
 import TextAsset from '../../assets/TextAssets.json'
 
 const INITIAL_MESSAGES = [
@@ -14,6 +15,10 @@ const INITIAL_MESSAGES = [
 ]
 
 function ChatbotWidget() {
+    const { user } = useAuth()
+    // Same fallback logic as the sidebar: displayName, else the email's local part.
+    const userName = user?.displayName || user?.email?.split('@')[0] || ''
+
     const [isOpen, setIsOpen] = useState(false)
     const [input, setInput] = useState('')
     const [isTyping, setIsTyping] = useState(false)
@@ -53,7 +58,7 @@ function ChatbotWidget() {
         setIsTyping(true)
 
         try {
-            const replyText = await getAssistantReply(history)
+            const replyText = await getAssistantReply(history, { userName })
             setMessages((current) => [
                 ...current,
                 { id: userMessage.id + 1, role: 'assistant', text: replyText },

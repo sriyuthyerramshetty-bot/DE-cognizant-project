@@ -1,6 +1,6 @@
 import { useEffect } from "react"
 
-function Notification({message, onDone, duration = 2600}) {
+function Notification({message, onDone, duration, actionLabel, onAction}) {
     useEffect(() => {
         if (!message) return;
         const timer = setTimeout(() => {
@@ -15,13 +15,23 @@ function Notification({message, onDone, duration = 2600}) {
     }
 
     return (
-        <div className="fixed inset-x-0 bottom-4 z-[9999] flex justify-center pointer-events-none">
+        <div className="fixed inset-x-0 bottom-4 z-[9999] flex justify-center">
             <div
                 role="status"
                 aria-live="polite"
                 className="animate-rise-fade rounded-xl bg-red-500 px-4 py-2 text-sm text-white shadow-xl"
+                style={{ animationDuration: `${duration}ms` }}
             >
-                {message}
+                <span className="pointer-events-none">
+                    {message}
+                </span>
+                <button
+                    type="button"
+                    className="ml-2 underline"
+                    onClick={onAction}
+                >
+                    {actionLabel}
+                </button>
             </div>
         </div>
     );

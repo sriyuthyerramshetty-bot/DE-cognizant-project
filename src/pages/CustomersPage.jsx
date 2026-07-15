@@ -215,7 +215,7 @@ function CustomersPage() {
             className="w-full max-w-md rounded-lg bg-white p-4"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="text-lg font-semibold">New Customer</h2>
+            <h2 className="text-lg font-semibold">Add New or Existing Customer</h2>
 
             <form className="mt-3 space-y-3" onSubmit={handleAdd}>
               <input

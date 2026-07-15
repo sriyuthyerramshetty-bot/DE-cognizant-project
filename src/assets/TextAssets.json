@@ -6,6 +6,9 @@
         "emptyMessage": "No items in cart.",
         "total": "Total"
     },
+    "CalendarPage": {
+        "title": "Calendar"
+    },
     "PlanPage": {
         "title": "Plans",
         "subtitle": "All available plans are listed below.",

@@ -76,7 +76,9 @@ export function TodoProvider({ children }) {
           task.isCheckoutTask === true &&
           task.checkoutCustomerId &&
           customerId &&
-          task.checkoutCustomerId === customerId
+          task.checkoutCustomerId === customerId &&
+          task.isCompleted === false
+
 
         if (!isSameCustomerCheckoutTask) {
           nextTasks.push(task)

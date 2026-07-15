@@ -265,11 +265,11 @@ function Todo() {
                   <button
                     type="button"
                     onClick={() => handleToggleTaskComplete(task)}
-                    disabled={isAnimatingOut}
+                    disabled={isAnimatingOut || task.isCheckoutTask}
                     className="ml-2 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-gray-300 bg-white text-black"
                     aria-label={`Complete ${task.name || 'task'}`}
                   >
-                    {isAnimatingOut || task.isCompleted ? <Check size={14} strokeWidth={3} /> : null}
+                    {isAnimatingOut || (task.isCompleted) ? <Check size={14} strokeWidth={3} /> : null}
                   </button>
                     
                   {task.isEditing ? (

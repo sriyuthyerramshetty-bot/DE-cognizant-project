@@ -1,4 +1,5 @@
 import './styles/App.css'
+import { useState } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import Todo from './pages/Todo.jsx'
 import CalendarPage from './pages/CalendarPage.jsx'
@@ -16,6 +17,11 @@ import { UserInfoProvider } from './context/UserInfoContext.jsx'
 import { TodoProvider } from './context/TodoContext.jsx'
 
 function App() {
+  // Card view vs. List view toggle for the Plans page. Kept here (above the
+  // router) so it survives navigating away and back during a session, while
+  // still defaulting to list view on a full refresh or fresh sign-in.
+  const [planCardView, setPlanCardView] = useState(false);
+
   return (
     <AuthProvider>
       <CartProvider>
@@ -30,7 +36,7 @@ function App() {
                 {/* Shared layout with the sidebar */}
                 <Route element={<MainLayout />}>
                   <Route path="/" element={<Todo />} />
-                  <Route path="/plan" element={<PlanPage plans={plans} />} />
+                  <Route path="/plan" element={<PlanPage plans={plans} cardView={planCardView} setCardView={setPlanCardView} />} />
                   <Route path="/cart" element={<CartPage />} />
                   <Route path="/calendar" element={<CalendarPage />} />
                   <Route path="/settings" element={<SettingsPage />} />

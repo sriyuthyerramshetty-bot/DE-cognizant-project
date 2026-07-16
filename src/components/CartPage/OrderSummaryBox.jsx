@@ -3,7 +3,7 @@ import TextAsset from '../../assets/TextAssets.json'
 function OrderSummaryBox ({ cart, removeFromCart }) {
 
     const total = cart.reduce((sum, plan) => {
-        return sum + parseFloat(plan.price.replace(/[^0-9.]/g, ''));
+        return sum + parseFloat(plan.price.replace(/[^0-9.]/g, '')) * (plan.lines ?? 1);
     }, 0);
     
     return (
@@ -17,7 +17,7 @@ function OrderSummaryBox ({ cart, removeFromCart }) {
                         <div key={plan.id} className="flex items-center justify-between border-b pb-2">
                             <div>
                                 <p className="font-medium">{plan.name}</p>
-                                <p className="text-sm text-gray-500">{plan.type} · {plan.speed}</p>
+                                <p className="text-sm text-gray-500">{plan.type} · {plan.speed}{(plan.lines ?? 1) > 1 ? ` · ${plan.lines} lines` : ''}</p>
                             </div>
                             <div className="flex items-center gap-3">
                                 <span className="font-semibold">{plan.price}</span>

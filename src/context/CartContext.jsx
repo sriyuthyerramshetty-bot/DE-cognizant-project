@@ -92,7 +92,66 @@ export function CartProvider({ children }) {
 
             return {
                 ...previousCarts,
-                [activeCustomerId]: [...currentCart, plan],
+                [activeCustomerId]: [...currentCart, { ...plan, lines: 1 }],
+            };
+        });
+
+        clearCheckoutSavedForCustomer(activeCustomerId);
+    };
+
+    // Add one line to a plan. If the plan isn't in the cart yet it's added with
+    // a single line; otherwise its existing line count is incremented.
+    const addLine = (plan) => {
+        if (!activeCustomerId) {
+            return;
+        }
+
+        setCartByCustomerId((previousCarts) => {
+            const currentCart = previousCarts[activeCustomerId] ?? [];
+            const exists = currentCart.some((cartPlan) => cartPlan.id === plan.id);
+
+            const nextCart = exists
+                ? currentCart.map((cartPlan) =>
+                    cartPlan.id === plan.id
+                        ? { ...cartPlan, lines: (cartPlan.lines ?? 1) + 1 }
+                        : cartPlan
+                )
+                : [...currentCart, { ...plan, lines: 1 }];
+
+            return {
+                ...previousCarts,
+                [activeCustomerId]: nextCart,
+            };
+        });
+
+        clearCheckoutSavedForCustomer(activeCustomerId);
+    };
+
+    // Remove one line from a plan. When the last line is removed the plan drops
+    // out of the cart entirely.
+    const removeLine = (planId) => {
+        if (!activeCustomerId) {
+            return;
+        }
+
+        setCartByCustomerId((previousCarts) => {
+            const currentCart = previousCarts[activeCustomerId] ?? [];
+            const target = currentCart.find((cartPlan) => cartPlan.id === planId);
+            if (!target) {
+                return previousCarts;
+            }
+
+            const nextCart = (target.lines ?? 1) <= 1
+                ? currentCart.filter((cartPlan) => cartPlan.id !== planId)
+                : currentCart.map((cartPlan) =>
+                    cartPlan.id === planId
+                        ? { ...cartPlan, lines: cartPlan.lines - 1 }
+                        : cartPlan
+                );
+
+            return {
+                ...previousCarts,
+                [activeCustomerId]: nextCart,
             };
         });
 
@@ -132,7 +191,7 @@ export function CartProvider({ children }) {
     };
 
     return (
-        <CartContext.Provider value={{ cart, addToCart, removeFromCart, cartByCustomerId, isCheckoutSaved, markCheckoutSaved, clearCheckoutSaved, clearCheckoutSavedForCustomer }}>
+        <CartContext.Provider value={{ cart, addToCart, addLine, removeLine, removeFromCart, cartByCustomerId, isCheckoutSaved, markCheckoutSaved, clearCheckoutSaved, clearCheckoutSavedForCustomer }}>
             {children}
         </CartContext.Provider>
     );

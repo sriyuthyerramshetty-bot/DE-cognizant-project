@@ -65,7 +65,8 @@
         "type": "Type",
         "speed": "Speed",
         "price": "Price",
-        "network": "Network"
+        "network": "Network",
+        "line": "Lines"
     },
     "AddToCartButton": {
         "added": "Added",

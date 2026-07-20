@@ -102,6 +102,7 @@ function SaveCheckoutButton({ cart, isFormValid }) {
                                 taskId={savedTask.id}
                                 taskName={savedTask.name}
                                 value={savedTask.dueAt}
+                                reminderAt={savedTask.reminderAt}
                                 onCommit={handleTaskDueDateCommit}
                                 onClear={handleTaskDueDateClear}
                                 isCompleted={savedTask.isCompleted}

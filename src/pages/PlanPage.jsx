@@ -8,15 +8,15 @@ import PlanRowHeader from '../components/PlanPage/PlanRowHeader.jsx';
 import { useState } from 'react';
 import TextAsset from '../assets/TextAssets.json'
 
-function PlanPage({ plans }) {
+function PlanPage({ plans, cardView, setCardView }) {
 
     // State to hold the search input value
     const [searchInput, setSearchInput] = useState("");
     const [filter, setFilter] = useState("all");
     // Sort direction for the Price/Speed sort, toggled by the OrderByButton.
     const [sortOrder, setSortOrder] = useState("asc");
-    // Card view vs. List view toggle
-    const [cardView, setCardView] = useState(false);
+    // Card view vs. List view toggle is lifted to <App> so it persists across
+    // navigation within a session (received here as props).
 
     // First apply dropdown filter
     const typeFilters = ['Home Internet', 'Mobile'];

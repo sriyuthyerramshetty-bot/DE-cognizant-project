@@ -22,7 +22,7 @@ function useTaskReminders(setTasks) {
         let changed = false
 
         const updated = currentTasks.map((task) => {
-          if (task.isCompleted || !task.reminderAt || task.reminderNotifiedAt) {
+          if (task.isCompleted || task.isEditing || !task.reminderAt || task.reminderNotifiedAt) {
             return task
           }
 

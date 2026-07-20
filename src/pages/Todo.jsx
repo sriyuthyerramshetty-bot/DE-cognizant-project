@@ -1,4 +1,4 @@
-import { useContext, useEffect, useRef, useState } from 'react'
+import { useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { Check, Pencil, Trash2 } from 'lucide-react'
 import DueDateInput from '../components/DueDateInput'
 import useTaskReminders from '../hooks/useTaskReminders'
@@ -7,10 +7,11 @@ import { useCart } from '../context/CartContext'
 
 function Todo() {
   const { tasks, setTasks, view, setView, nextId, setNextId } = useContext(TodoContext)
-  const { clearCheckoutSavedForCustomer, markCheckoutSaved } = useCart()
+  const { clearCheckoutSavedForCustomer } = useCart()
   const [removingTaskIds, setRemovingTaskIds] = useState(new Set())
   const [restoringTaskIds, setRestoringTaskIds] = useState(new Set())
   const inputRef = useRef(null)
+  const dueDateInputRefs = useRef(new Map())
   const editingTaskId = tasks.find((task) => task.isEditing)?.id
   const hasPendingUnnamedTask = tasks.some(
     (task) => task.isEditing && !task.name.trim(),
@@ -83,7 +84,7 @@ function Todo() {
     )
   }
 
-  const finishTaskEditing = (taskId, nextName) => {
+  const finishTaskEditing = useCallback((taskId, nextName) => {
     setTasks((currentTasks) =>
       currentTasks.map((task) =>
         task.id === taskId
@@ -95,19 +96,23 @@ function Todo() {
           : task,
       ),
     )
-  }
+  }, [setTasks])
 
-  const commitTaskEditing = (taskId, nextName) => {
-    const trimmedName = (nextName ?? '').trim()
+  const saveTaskEditing = (task) => {
+    const trimmedName = (task.name ?? '').trim()
     if (!trimmedName) {
       if (inputRef.current) {
         inputRef.current.focus()
       }
-      return false
+      return
     }
 
-    finishTaskEditing(taskId, trimmedName)
-    return true
+    const dueDateSaveResult = dueDateInputRefs.current.get(task.id)?.commitNow?.()
+    if (dueDateSaveResult?.ok === false) {
+      return
+    }
+
+    finishTaskEditing(task.id, trimmedName)
   }
 
   const startTaskEditing = (taskId) => {
@@ -236,30 +241,6 @@ function Todo() {
               <div
                 data-task-row-id={task.id}
                 className="group flex items-center gap-4 rounded-lg border border-gray-300 p-2 hover:border-gray-400"
-                onBlurCapture={() => {
-                  if (!task.isEditing) {
-                    return
-                  }
-
-                  setTimeout(() => {
-                    const rowElement = document.querySelector(
-                      `[data-task-row-id="${task.id}"]`,
-                    )
-                    if (!(rowElement instanceof HTMLElement)) {
-                      return
-                    }
-
-                    const activeElement = document.activeElement
-                    if (
-                      activeElement instanceof HTMLElement &&
-                      rowElement.contains(activeElement)
-                    ) {
-                      return
-                    }
-
-                    commitTaskEditing(task.id, task.name)
-                  }, 10)
-                }}
               >
                 <div className="flex w-full items-center gap-3">
                   <button
@@ -283,7 +264,7 @@ function Todo() {
                       onKeyDown={(event) => {
                         if (event.key === 'Enter') {
                           event.preventDefault()
-                          commitTaskEditing(task.id, event.currentTarget.value)
+                          saveTaskEditing({ ...task, name: event.currentTarget.value })
                         }
                       }}
                       placeholder="Enter task name"
@@ -301,19 +282,31 @@ function Todo() {
 
                   <div className="ml-auto mr-2 flex items-center gap-1">
                     <DueDateInput
+                      ref={(element) => {
+                        if (element) {
+                          dueDateInputRefs.current.set(task.id, element)
+                        } else {
+                          dueDateInputRefs.current.delete(task.id)
+                        }
+                      }}
                       taskId={task.id}
                       taskName={task.name}
                       value={task.dueAt}
+                      reminderAt={task.reminderAt}
                       onCommit={handleTaskDueDateCommit}
                       onClear={handleTaskDueDateClear}
                       isCompleted={task.isCompleted}
                       isEditable={task.isEditing}
-                      onRequestExitEdit={() => commitTaskEditing(task.id, task.name)}
                     />
 
                     <button
                       type="button"
                       onClick={() => {
+                        if (task.isEditing) {
+                          saveTaskEditing(task)
+                          return
+                        }
+
                         if (task.isCompleted || task.isEditing) {
                           return
                         }
@@ -327,9 +320,9 @@ function Todo() {
                             ? 'opacity-100'
                             : 'opacity-0 group-hover:opacity-100'
                       }`}
-                      aria-label={`Edit ${task.name || 'task'}`}
+                      aria-label={task.isEditing ? `Save ${task.name || 'task'}` : `Edit ${task.name || 'task'}`}
                     >
-                      <Pencil size={17} />
+                      {task.isEditing ? <Check size={17} /> : <Pencil size={17} />}
                     </button>
 
                     <button

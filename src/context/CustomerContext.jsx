@@ -1,46 +1,53 @@
-import { createContext, useCallback, useEffect, useMemo, useState } from 'react'
+import { createContext, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { customerStorage } from '../storage/storageProvider'
 
 export const CustomerContext = createContext(null)
 
 export function CustomerProvider({ children }) {
-  const [customers, setCustomers] = useState([])
-  const [selectedCustomers, setSelectedCustomers] = useState([])
+  // Initialize from cache immediately for instant load
+  const cachedCustomers = customerStorage.loadCachedCustomers()
+  const cachedSelectedIds = customerStorage.loadSelectedCustomerIds()
+  const initialSelected = cachedSelectedIds
+    .map((id) => cachedCustomers.find((c) => c.id === id))
+    .filter(Boolean)
+  const initialActiveId = customerStorage.loadActiveCustomerId(initialSelected)
+
+  const [customers, setCustomers] = useState(cachedCustomers)
+  const [selectedCustomers, setSelectedCustomers] = useState(initialSelected)
   const [lookupPhone, setLookupPhone] = useState('')
   const [lookupError, setLookupError] = useState('')
-  const [activeCustomerId, setActiveCustomerId] = useState(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [activeCustomerId, setActiveCustomerId] = useState(initialActiveId)
+  const [isLoading, setIsLoading] = useState(false)
+  
+  // Track if we've synced with database
+  const hasSyncedRef = useRef(false)
 
-  // Load customers from database on mount
+  // Sync with database in background (only once on mount)
   useEffect(() => {
-    const loadCustomers = async () => {
+    if (hasSyncedRef.current) return
+    hasSyncedRef.current = true
+
+    const syncWithDatabase = async () => {
       setIsLoading(true)
 
-      const { data: dbCustomers, error } = await customerStorage.fetchCustomers()
+      const { data: dbCustomers, error, fromCache } = await customerStorage.fetchCustomers()
 
-      if (error) {
-        console.error('Failed to load customers from database:', error)
-        setCustomers([])
-      } else {
-        setCustomers(dbCustomers ?? [])
-      }
+      if (!error && dbCustomers && !fromCache) {
+        setCustomers(dbCustomers)
 
-      // Load selected/active state from localStorage
-      const selectedIds = customerStorage.loadSelectedCustomerIds()
-      if (selectedIds.length > 0 && dbCustomers) {
-        const selected = selectedIds
-          .map((id) => dbCustomers.find((c) => c.id === id))
-          .filter(Boolean)
-        setSelectedCustomers(selected)
-
-        const activeId = customerStorage.loadActiveCustomerId(selected)
-        setActiveCustomerId(activeId)
+        // Update selected customers with fresh data from DB
+        setSelectedCustomers((prev) => {
+          const selectedIds = prev.map((c) => c.id)
+          return selectedIds
+            .map((id) => dbCustomers.find((c) => c.id === id))
+            .filter(Boolean)
+        })
       }
 
       setIsLoading(false)
     }
 
-    loadCustomers()
+    syncWithDatabase()
   }, [])
 
   // Persist selected customer IDs to localStorage

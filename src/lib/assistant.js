@@ -8,8 +8,7 @@
  * No API key, no .env config, and no CORS/proxy setup needed.
  */
 
-import { plans } from '../../server/data/data.js'
-import customers from '../../server/data/customers.json'
+import { getDataSummary, searchCustomers, searchPlans, getPlans, getRecommendedPlans } from './dataAccessLayer.js'
 import { sanitizePrompt, validateConversation, checkRateLimit } from './promptSanitizer.js'
 
 const MODEL = 'gpt-4o-mini'
@@ -21,7 +20,12 @@ const MODEL = 'gpt-4o-mini'
  *
  * @param {{ userName?: string }} context
  */
-const buildSystemPrompt = ({ userName } = {}) => `You are the Verizon Assistant, a friendly helper embedded in an internal
+const buildSystemPrompt = ({ userName } = {}) => {
+  const summary = getDataSummary();
+  const allPlans = getPlans(); // Get actual plan data
+  const planSummary = allPlans.map(p => `- ${p.name} (${p.type}): ${p.speed} Mbps, $${p.price}/mo`).join('\n');
+  
+  return `You are the Verizon Assistant, a friendly helper embedded in an internal
 Verizon employee portal. The portal has these pages:
 - To-Do List: employees manage tasks with due dates and reminders
 - Customers: customer records and details
@@ -31,20 +35,13 @@ Verizon employee portal. The portal has these pages:
 
 ${userName ? `You are talking to the employee "${userName}". Address them by name when it feels natural (e.g., in greetings), but don't overdo it.` : ''}
 
-Here is the portal's current PLAN catalog (JSON):
-${JSON.stringify(plans)}
+Here are the available PLANS:
+${planSummary}
 
-Here are the portal's CUSTOMER records (JSON):
-${JSON.stringify(customers)}
-
-Use this data to answer questions about plans and customers accurately — e.g.
-looking up a customer by name/phone/id, comparing plan prices or speeds, or
-recommending Best Value plans. Never invent customers or plans that are not in
-the data. This is an internal tool, so sharing the customer data with the
-employee is expected and fine.
-
+Use this data to answer questions about plans accurately.
 Answer questions helpfully and concisely (2-3 sentences max unless asked for detail).
-Stay professional but warm.`
+Stay professional but warm.`;
+};
 
 /**
  * Sends the conversation to the AI and returns the assistant's reply.

@@ -4,6 +4,7 @@ import DueDateInput from '../components/DueDateInput'
 import useTaskReminders from '../hooks/useTaskReminders'
 import { TodoContext } from '../context/TodoContext'
 import { useCart } from '../context/CartContext'
+import { useAuth } from '../context/AuthContext'
 
 function Todo() {
   const { tasks, setTasks, view, setView, nextId, setNextId } = useContext(TodoContext)
@@ -17,6 +18,11 @@ function Todo() {
     (task) => task.isEditing && !task.name.trim(),
   )
   const isAddTaskDisabled = view !== 'active' || hasPendingUnnamedTask
+
+  const { user } = useAuth()
+  // Firebase accounts created with only email/password have no displayName,
+  // so fall back to the email's local part, then a generic label.
+  const displayName = user?.displayName || user?.email?.split("@")[0] || "User"
 
   useEffect(() => {
     if (editingTaskId && inputRef.current) {
@@ -209,7 +215,7 @@ function Todo() {
   return (
     <div className="relative flex h-screen flex-col overflow-hidden p-8">
       <div className="relative mb-6">
-        <h1 className="text-2xl font-semibold">Good Morning, Sriyuth!</h1>
+        <h1 className="text-2xl font-semibold">Good Morning, {displayName}!</h1>
         <p className="mt-2 text-slate-600">Where would you like to start today?</p>
 
         <select

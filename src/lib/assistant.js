@@ -10,6 +10,7 @@
 
 import { plans } from '../../server/data/data.js'
 import customers from '../../server/data/customers.json'
+import { sanitizePrompt, validateConversation, checkRateLimit } from './promptSanitizer.js'
 
 const MODEL = 'gpt-4o-mini'
 
@@ -58,6 +59,34 @@ export async function getAssistantReply(messages, context = {}) {
     // Puter.js attaches itself to window when its script tag loads.
     if (typeof window === 'undefined' || !window.puter?.ai?.chat) {
         return 'The AI service has not loaded yet. Check that the Puter.js script tag is in index.html, then refresh the page.'
+    }
+
+    // 1. Sanitize and validate the conversation
+    const validation = validateConversation(messages);
+    if (!validation.isValid) {
+        console.warn('Invalid conversation:', validation.reason);
+        return 'Your message could not be processed. Please try a different question.';
+    }
+
+    // 2. Get user ID from context (or use a session/browser fingerprint)
+    const userId = context.userName || 'anonymous';
+
+    // 3. Rate limit check (max 10 requests per minute per user)
+    const rateCheck = checkRateLimit(userId, 10);
+    if (!rateCheck.allowed) {
+        return `You're sending messages too quickly. Please wait ${rateCheck.retryAfter} seconds and try again.`;
+    }
+
+    // 4. Sanitize the most recent user message
+    if (messages.length > 0) {
+        const lastMsg = messages[messages.length - 1];
+        if (lastMsg.role === 'user') {
+            const sanitized = sanitizePrompt(lastMsg.text);
+            if (!sanitized.isClean) {
+                console.warn('Blocked prompt:', sanitized.reason);
+                return 'Your message was blocked for safety reasons. Please ask something else.';
+            }
+        }
     }
 
     try {

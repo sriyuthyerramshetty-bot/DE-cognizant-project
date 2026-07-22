@@ -1,5 +1,4 @@
-import customersData from '../../server/data/customers.json'
-
+const CUSTOMERS_CACHE_KEY = 'todo-app.customers-cache'
 const SELECTED_CUSTOMER_IDS_STORAGE_KEY = 'todo-app.selected-customer-ids'
 const ACTIVE_CUSTOMER_ID_STORAGE_KEY = 'todo-app.active-customer-id'
 
@@ -33,6 +32,46 @@ export class CustomerStorage {
     }
   }
 
+  // ============ Cache Methods ============
+
+  loadCachedCustomers() {
+    return this.parseStoredJson(CUSTOMERS_CACHE_KEY, [])
+  }
+
+  saveCachedCustomers(customers) {
+    if (!this.isBrowser()) {
+      return
+    }
+    window.localStorage.setItem(CUSTOMERS_CACHE_KEY, JSON.stringify(customers))
+  }
+
+  updateCachedCustomer(customer) {
+    if (!this.isBrowser() || !customer) {
+      return
+    }
+
+    const cached = this.loadCachedCustomers()
+    const index = cached.findIndex((c) => c.id === customer.id)
+
+    if (index >= 0) {
+      cached[index] = customer
+    } else {
+      cached.unshift(customer)
+    }
+
+    this.saveCachedCustomers(cached)
+  }
+
+  removeCachedCustomer(customerId) {
+    if (!this.isBrowser()) {
+      return
+    }
+
+    const cached = this.loadCachedCustomers()
+    const filtered = cached.filter((c) => c.id !== customerId)
+    this.saveCachedCustomers(filtered)
+  }
+
   // ============ Database Methods ============
 
   async fetchCustomers() {
@@ -42,36 +81,57 @@ export class CustomerStorage {
     })
 
     if (error) {
-      return { data: null, error }
+      // Return cached data on error
+      const cached = this.loadCachedCustomers()
+      return { data: cached, error, fromCache: true }
     }
 
     const customers = data.map((row) => this.transformFromDb(row))
-    return { data: customers, error: null }
+    
+    // Update cache with fresh data
+    this.saveCachedCustomers(customers)
+    
+    return { data: customers, error: null, fromCache: false }
   }
 
   async fetchCustomerById(customerId) {
+    // Check cache first
+    const cached = this.loadCachedCustomers()
+    const cachedCustomer = cached.find((c) => c.id === customerId)
+
     const { data, error } = await this.connection.fetchById(TABLE_NAME, 'id', customerId)
 
     if (error) {
-      return { data: null, error }
+      // Return cached if available
+      return { data: cachedCustomer ?? null, error, fromCache: Boolean(cachedCustomer) }
     }
 
-    return { data: this.transformFromDb(data), error: null }
+    const customer = this.transformFromDb(data)
+    this.updateCachedCustomer(customer)
+    return { data: customer, error: null }
   }
 
   async fetchCustomerByPhone(phone) {
     const normalizedPhone = this.normalizePhone(phone)
+    
+    // Check cache first
+    const cached = this.loadCachedCustomers()
+    const cachedCustomer = cached.find((c) => this.normalizePhone(c.phone) === normalizedPhone)
+
     const { data, error } = await this.connection.fetchByField(TABLE_NAME, 'phone', normalizedPhone)
 
     if (error) {
-      return { data: null, error }
+      // Return cached if available
+      return { data: cachedCustomer ?? null, error, fromCache: Boolean(cachedCustomer) }
     }
 
     if (!data) {
       return { data: null, error: null }
     }
 
-    return { data: this.transformFromDb(data), error: null }
+    const customer = this.transformFromDb(data)
+    this.updateCachedCustomer(customer)
+    return { data: customer, error: null }
   }
 
   async insertCustomer(customer) {
@@ -82,7 +142,9 @@ export class CustomerStorage {
       return { data: null, error }
     }
 
-    return { data: this.transformFromDb(data), error: null }
+    const insertedCustomer = this.transformFromDb(data)
+    this.updateCachedCustomer(insertedCustomer)
+    return { data: insertedCustomer, error: null }
   }
 
   async updateCustomer(customerId, updates) {
@@ -93,11 +155,19 @@ export class CustomerStorage {
       return { data: null, error }
     }
 
-    return { data: this.transformFromDb(data), error: null }
+    const updatedCustomer = this.transformFromDb(data)
+    this.updateCachedCustomer(updatedCustomer)
+    return { data: updatedCustomer, error: null }
   }
 
   async deleteCustomer(customerId) {
-    return await this.connection.delete(TABLE_NAME, 'id', customerId)
+    const result = await this.connection.delete(TABLE_NAME, 'id', customerId)
+    
+    if (result.success) {
+      this.removeCachedCustomer(customerId)
+    }
+    
+    return result
   }
 
   // ============ Transform Helpers ============
@@ -295,9 +365,5 @@ export class CustomerStorage {
     }
 
     return {}
-  }
-
-  getDefaultCustomers() {
-    return customersData ?? []
   }
 }

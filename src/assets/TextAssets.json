@@ -6,6 +6,9 @@
         "emptyMessage": "No items in cart.",
         "total": "Total"
     },
+    "CalendarPage": {
+        "title": "Calendar"
+    },
     "PlanPage": {
         "title": "Plans",
         "subtitle": "All available plans are listed below.",
@@ -41,7 +44,7 @@
         "bestValue": "Best Value"
     },
     "UserInfoBox": {
-        "title": "Your Information",
+        "title": "Customer Information",
         "name": "Full Name",
         "namePlaceholder": "Enter your full name",
         "email": "Email",
@@ -52,5 +55,21 @@
         "addressPlaceholder": "Enter your address",
         "submitButton": "Place Order",
         "saveCheckoutButton": "Save Checkout"
+    },
+    "CardViewButton": {
+        "grid": "Grid View",
+        "list": "List View"
+    },
+    "PlanRowHeader": {
+        "name": "Name",
+        "type": "Type",
+        "speed": "Speed",
+        "price": "Price",
+        "network": "Network",
+        "line": "Lines"
+    },
+    "AddToCartButton": {
+        "added": "Added",
+        "addToCart": "Add to Cart"
     }
 }

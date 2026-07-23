@@ -1,0 +1,13 @@
+id,first_name,last_name,phone,email,address,account_status,created_at
+CUST-1001,Ava,Thompson,5551234001,ava.thompson@example.com,"{""line1"":""102 Maple Street"",""city"":""Austin"",""state"":""TX"",""postalCode"":""78701""}",active,2025-01-18T10:22:00.000Z
+CUST-1002,Noah,Patel,5551234002,noah.patel@example.com,"{""line1"":""44 Lakeview Drive"",""city"":""Dallas"",""state"":""TX"",""postalCode"":""75201""}",active,2025-02-03T13:45:00.000Z
+CUST-1003,Mia,Nguyen,5551234003,mia.nguyen@example.com,"{""line1"":""890 Pine Avenue"",""city"":""Houston"",""state"":""TX"",""postalCode"":""77002""}",suspended,2025-02-27T08:10:00.000Z
+CUST-1004,Liam,Brooks,5551234004,liam.brooks@example.com,"{""line1"":""15 Riverbend Court"",""city"":""San Antonio"",""state"":""TX"",""postalCode"":""78205""}",active,2025-03-11T17:02:00.000Z
+CUST-1005,Sophia,Garcia,5551234005,sophia.garcia@example.com,"{""line1"":""320 Cypress Lane"",""city"":""Fort Worth"",""state"":""TX"",""postalCode"":""76102""}",active,2025-03-29T11:55:00.000Z
+CUST-1006,Ethan,Reed,5551234006,ethan.reed@example.com,"{""line1"":""77 Hilltop Road"",""city"":""Plano"",""state"":""TX"",""postalCode"":""75023""}",closed,2025-04-08T09:31:00.000Z
+CUST-1007,Isabella,Kim,5551234007,isabella.kim@example.com,"{""line1"":""918 Sunset Blvd"",""city"":""Irving"",""state"":""TX"",""postalCode"":""75038""}",active,2025-04-25T14:18:00.000Z
+CUST-1008,James,Ali,5551234008,james.ali@example.com,"{""line1"":""61 Oak Ridge Way"",""city"":""Frisco"",""state"":""TX"",""postalCode"":""75034""}",active,2025-05-12T12:44:00.000Z
+CUST-1009,Charlotte,Wright,5551234009,charlotte.wright@example.com,"{""line1"":""405 Birch Park"",""city"":""Arlington"",""state"":""TX"",""postalCode"":""76010""}",active,2025-05-26T16:20:00.000Z
+CUST-1010,Benjamin,Lopez,5551234010,benjamin.lopez@example.com,"{""line1"":""12 Meadow Creek"",""city"":""El Paso"",""state"":""TX"",""postalCode"":""79901""}",suspended,2025-06-09T07:58:00.000Z
+CUST-1011,Amelia,Rivera,5551234011,amelia.rivera@example.com,"{""line1"":""730 Aspen Trail"",""city"":""Lubbock"",""state"":""TX"",""postalCode"":""79401""}",active,2025-06-21T19:05:00.000Z
+CUST-1012,Lucas,Choi,5551234012,lucas.choi@example.com,"{""line1"":""250 Northfield St"",""city"":""Corpus Christi"",""state"":""TX"",""postalCode"":""78401""}",active,2025-07-02T15:14:00.000Z

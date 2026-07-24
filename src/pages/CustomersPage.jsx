@@ -5,29 +5,50 @@ import { Info, Trash2 } from 'lucide-react'
 function CustomersPage() {
   const {
     selectedCustomers,
-    addCustomerByPhone,
+    addCustomer,
+    clearCustomerHistory,
     lookupError,
     activeCustomerId,
     selectActiveCustomer,
     removeSelectedCustomer,
   } = useContext(CustomerContext)
-  const [phoneInput, setPhoneInput] = useState('')
+  const [newCustomerForm, setNewCustomerForm] = useState({
+    name: '',
+    phone: '',
+    email: '',
+    address: '',
+  })
   const [showPopup, setShowPopup] = useState(false)
   const [infoCustomerId, setInfoCustomerId] = useState(null)
 
   const handleAdd = (event) => {
-    setShowPopup(false)
     event.preventDefault()
-    const ok = addCustomerByPhone(phoneInput)
-    if (ok) setPhoneInput('')
+    const ok = addCustomer(newCustomerForm)
+
+    if (!ok) {
+      return
+    }
+
+    setNewCustomerForm({
+      name: '',
+      phone: '',
+      email: '',
+      address: '',
+    })
+    setShowPopup(false)
   }
 
   const handlePopup = () => {
     setShowPopup(!showPopup)
   }
 
-  const handlePhoneInputChange = (event) => {
-    setPhoneInput(event.target.value)
+  const handleInputChange = (field) => (event) => {
+    const value = event.target.value
+
+    setNewCustomerForm((previousForm) => ({
+      ...previousForm,
+      [field]: value,
+    }))
   }
 
   const formatPhoneNumber = (value) => {
@@ -71,10 +92,31 @@ function CustomersPage() {
     removeSelectedCustomer(customerId)
   }
 
+  const handleClearSavedCustomers = () => {
+    clearCustomerHistory()
+    setInfoCustomerId(null)
+    setShowPopup(false)
+    setNewCustomerForm({
+      name: '',
+      phone: '',
+      email: '',
+      address: '',
+    })
+  }
+
   return (
     <div className="relative flex h-screen flex-col overflow-hidden p-8">
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold">View Customers</h1>
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="text-2xl font-semibold">View Customers</h1>
+          <button
+            type="button"
+            onClick={handleClearSavedCustomers}
+            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 transition-colors hover:bg-gray-100"
+          >
+            Reset Saved Customers
+          </button>
+        </div>
         <p className="mt-2 text-slate-600">Add or select a customer to get started.</p>
       </div>
 
@@ -173,10 +215,33 @@ function CustomersPage() {
             className="w-full max-w-md rounded-lg bg-white p-4"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="text-lg font-semibold">New Customer</h2>
+            <h2 className="text-lg font-semibold">Add New or Existing Customer</h2>
 
             <form className="mt-3 space-y-3" onSubmit={handleAdd}>
-              <input className="w-full rounded border p-2" placeholder="Phone number" value={phoneInput} onChange={handlePhoneInputChange} />
+              <input
+                className="w-full rounded border p-2"
+                placeholder="Full name"
+                value={newCustomerForm.name}
+                onChange={handleInputChange('name')}
+              />
+              <input
+                className="w-full rounded border p-2"
+                placeholder="Phone number"
+                value={newCustomerForm.phone}
+                onChange={handleInputChange('phone')}
+              />
+              <input
+                className="w-full rounded border p-2"
+                placeholder="Email (optional)"
+                value={newCustomerForm.email}
+                onChange={handleInputChange('email')}
+              />
+              <input
+                className="w-full rounded border p-2"
+                placeholder="Address (optional)"
+                value={newCustomerForm.address}
+                onChange={handleInputChange('address')}
+              />
               <div className="flex justify-end gap-2">
                 <button type="button" onClick={() => setShowPopup(false)}>
                   Cancel

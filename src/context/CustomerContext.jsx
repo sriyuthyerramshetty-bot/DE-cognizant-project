@@ -1,66 +1,78 @@
 import { createContext, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { customerStorage } from '../storage/storageProvider'
+import { customerStorage, employeeStorage } from '../storage/storageProvider'
+import { useAuth } from './AuthContext'
 
 export const CustomerContext = createContext(null)
 
 export function CustomerProvider({ children }) {
-  // Initialize from cache immediately for instant load
-  const cachedCustomers = customerStorage.loadCachedCustomers()
-  const cachedSelectedIds = customerStorage.loadSelectedCustomerIds()
-  const initialSelected = cachedSelectedIds
-    .map((id) => cachedCustomers.find((c) => c.id === id))
-    .filter(Boolean)
-  const initialActiveId = customerStorage.loadActiveCustomerId(initialSelected)
+  const { employee } = useAuth()
+  const employeeId = employee?.id
 
-  const [customers, setCustomers] = useState(cachedCustomers)
-  const [selectedCustomers, setSelectedCustomers] = useState(initialSelected)
+  const [customers, setCustomers] = useState([])
+  const [selectedCustomers, setSelectedCustomers] = useState([])
   const [lookupPhone, setLookupPhone] = useState('')
   const [lookupError, setLookupError] = useState('')
-  const [activeCustomerId, setActiveCustomerId] = useState(initialActiveId)
-  const [isLoading, setIsLoading] = useState(false)
+  const [activeCustomerId, setActiveCustomerId] = useState(null)
+  const [isLoading, setIsLoading] = useState(true)
   
-  // Track if we've synced with database
-  const hasSyncedRef = useRef(false)
+  const lastEmployeeIdRef = useRef(null)
 
-  // Sync with database in background (only once on mount)
+  // Load customers and employee's customer views when employee changes
   useEffect(() => {
-    if (hasSyncedRef.current) return
-    hasSyncedRef.current = true
+    if (!employeeId) {
+      setSelectedCustomers([])
+      setActiveCustomerId(null)
+      setIsLoading(false)
+      return
+    }
 
-    const syncWithDatabase = async () => {
+    // Skip if same employee
+    if (lastEmployeeIdRef.current === employeeId) {
+      return
+    }
+    lastEmployeeIdRef.current = employeeId
+
+    const loadData = async () => {
       setIsLoading(true)
 
-      const { data: dbCustomers, error, fromCache } = await customerStorage.fetchCustomers()
+      // Fetch all customers
+      const { data: dbCustomers } = await customerStorage.fetchCustomers()
+      setCustomers(dbCustomers ?? [])
 
-      if (!error && dbCustomers && !fromCache) {
-        setCustomers(dbCustomers)
+      // Fetch this employee's customer views
+      const { data: views } = await employeeStorage.fetchCustomerViewsForEmployee(employeeId)
 
-        // Update selected customers with fresh data from DB
-        setSelectedCustomers((prev) => {
-          const selectedIds = prev.map((c) => c.id)
-          return selectedIds
-            .map((id) => dbCustomers.find((c) => c.id === id))
-            .filter(Boolean)
-        })
+      if (views && views.length > 0 && dbCustomers) {
+        // Map view customer IDs to actual customer objects
+        const viewedCustomerIds = views.map((v) => v.customerId)
+        const viewedCustomers = viewedCustomerIds
+          .map((id) => dbCustomers.find((c) => c.id === id))
+          .filter(Boolean)
+
+        setSelectedCustomers(viewedCustomers)
+
+        // Set most recently viewed as active
+        if (viewedCustomers.length > 0) {
+          setActiveCustomerId(viewedCustomers[0].id)
+        }
+      } else {
+        setSelectedCustomers([])
+        setActiveCustomerId(null)
       }
 
       setIsLoading(false)
     }
 
-    syncWithDatabase()
-  }, [])
-
-  // Persist selected customer IDs to localStorage
-  useEffect(() => {
-    customerStorage.saveSelectedCustomerIds(selectedCustomers)
-  }, [selectedCustomers])
-
-  // Persist active customer ID to localStorage
-  useEffect(() => {
-    customerStorage.saveActiveCustomerId(activeCustomerId)
-  }, [activeCustomerId])
+    loadData()
+  }, [employeeId])
 
   const normalizePhone = useCallback((value) => String(value ?? '').replace(/\D/g, ''), [])
+
+  // Save customer view to database when adding a customer
+  const saveCustomerView = useCallback(async (customerId) => {
+    if (!employeeId) return
+    await employeeStorage.upsertCustomerView(employeeId, customerId)
+  }, [employeeId])
 
   const addCustomerByPhone = useCallback(async (phoneInput) => {
     const normalized = normalizePhone(phoneInput)
@@ -73,7 +85,6 @@ export function CustomerProvider({ children }) {
       const { data: dbCustomer } = await customerStorage.fetchCustomerByPhone(normalized)
       if (dbCustomer) {
         match = dbCustomer
-        // Add to local state if found in DB
         setCustomers((prev) => {
           if (prev.some((c) => c.id === dbCustomer.id)) return prev
           return [...prev, dbCustomer]
@@ -86,6 +97,9 @@ export function CustomerProvider({ children }) {
       return false
     }
 
+    // Save to employee's customer views in database
+    await saveCustomerView(match.id)
+
     setSelectedCustomers((prev) => {
       if (prev.some((customer) => customer.id === match.id)) {
         return prev
@@ -95,7 +109,7 @@ export function CustomerProvider({ children }) {
     setActiveCustomerId(match.id)
     setLookupError('')
     return true
-  }, [customers, normalizePhone])
+  }, [customers, normalizePhone, saveCustomerView])
 
   const addCustomer = useCallback(async (payload) => {
     const result = await customerStorage.createCustomer(payload)
@@ -108,15 +122,16 @@ export function CustomerProvider({ children }) {
     const customer = result.customer
 
     if (result.isExisting) {
-      // Customer already exists, just select them
       setCustomers((prev) => {
         if (prev.some((c) => c.id === customer.id)) return prev
         return [...prev, customer]
       })
     } else {
-      // New customer was created in DB, add to local state
       setCustomers((prev) => [...prev, customer])
     }
+
+    // Save to employee's customer views in database
+    await saveCustomerView(customer.id)
 
     setSelectedCustomers((prev) => {
       if (prev.some((c) => c.id === customer.id)) return prev
@@ -125,13 +140,13 @@ export function CustomerProvider({ children }) {
     setActiveCustomerId(customer.id)
     setLookupError('')
     return true
-  }, [])
+  }, [saveCustomerView])
 
   const activeCustomer = selectedCustomers.find(
     (customer) => customer.id === activeCustomerId,
   ) ?? null
 
-  const selectActiveCustomer = useCallback((customerId) => {
+  const selectActiveCustomer = useCallback(async (customerId) => {
     const isCustomerAvailable = selectedCustomers.some(
       (customer) => customer.id === customerId,
     )
@@ -140,10 +155,22 @@ export function CustomerProvider({ children }) {
       return
     }
 
-    setActiveCustomerId(customerId)
-  }, [selectedCustomers])
+    // Update last_viewed_at in database
+    await saveCustomerView(customerId)
 
-  const removeSelectedCustomer = useCallback((customerId) => {
+    setActiveCustomerId(customerId)
+  }, [selectedCustomers, saveCustomerView])
+
+  const removeSelectedCustomer = useCallback(async (customerId) => {
+    // Remove from database
+    if (employeeId) {
+      const { data: views } = await employeeStorage.fetchCustomerViewsForEmployee(employeeId)
+      const viewToDelete = views?.find((v) => v.customerId === customerId)
+      if (viewToDelete) {
+        await employeeStorage.deleteCustomerView(viewToDelete.id)
+      }
+    }
+
     setSelectedCustomers((previousCustomers) => {
       const removedIndex = previousCustomers.findIndex(
         (customer) => customer.id === customerId,
@@ -175,7 +202,7 @@ export function CustomerProvider({ children }) {
 
       return nextCustomers
     })
-  }, [])
+  }, [employeeId])
 
   const updateActiveCustomerField = useCallback(async (fieldName, fieldValue) => {
     if (!activeCustomerId) {
@@ -209,11 +236,21 @@ export function CustomerProvider({ children }) {
     setSelectedCustomers((prev) => prev.map(applyUpdate))
   }, [activeCustomerId, customers])
 
-  const clearCustomerHistory = useCallback(() => {
+  const clearCustomerHistory = useCallback(async () => {
+    // Remove all views from database for this employee
+    if (employeeId) {
+      const { data: views } = await employeeStorage.fetchCustomerViewsForEmployee(employeeId)
+      if (views) {
+        for (const view of views) {
+          await employeeStorage.deleteCustomerView(view.id)
+        }
+      }
+    }
+
     setSelectedCustomers([])
     setActiveCustomerId(null)
     setLookupError('')
-  }, [])
+  }, [employeeId])
 
   const refreshCustomers = useCallback(async () => {
     const { data: dbCustomers, error } = await customerStorage.fetchCustomers()

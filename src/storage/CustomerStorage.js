@@ -192,7 +192,6 @@ export class CustomerStorage {
         postalCode: address.postalCode ?? '',
       },
       createdAt: dbCustomer.created_at ?? new Date().toISOString(),
-      updatedAt: dbCustomer.updated_at ?? new Date().toISOString(),
     }
   }
 
@@ -204,7 +203,6 @@ export class CustomerStorage {
     if (customer.lastName !== undefined) dbCustomer.last_name = customer.lastName
     if (customer.phone !== undefined) dbCustomer.phone = customer.phone
     if (customer.email !== undefined) dbCustomer.email = customer.email
-    if (customer.updatedAt !== undefined) dbCustomer.updated_at = customer.updatedAt
 
     // Address is stored as JSONB in Supabase
     if (customer.address !== undefined) {
@@ -312,7 +310,6 @@ export class CustomerStorage {
         postalCode: '',
       },
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
     }
 
     // Insert to database

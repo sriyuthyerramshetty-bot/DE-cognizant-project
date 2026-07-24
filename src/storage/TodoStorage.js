@@ -115,6 +115,20 @@ export class TodoStorage {
 
   // ============ Database Methods ============
 
+  async fetchAllTodos() {
+    const { data, error } = await this.connection.fetchAll(TODOS_TABLE, {
+      orderBy: 'created_at',
+      ascending: false,
+    })
+
+    if (error) {
+      return { data: [], error }
+    }
+
+    const todos = data.map((row) => this.transformFromDb(row))
+    return { data: todos, error: null }
+  }
+
   async fetchTodosForEmployee(employeeId) {
     const { data, error } = await this.connection.fetchAll(TODOS_TABLE, {
       orderBy: 'created_at',
@@ -224,24 +238,31 @@ export class TodoStorage {
   }
 
   async toggleTodoComplete(todoId) {
-    const { data: todo } = await this.fetchTodoById(todoId)
+    console.log('[TodoStorage] toggleTodoComplete called for:', todoId)
+    const { data: todo, error: fetchError } = await this.fetchTodoById(todoId)
 
     if (!todo) {
+      console.error('[TodoStorage] Task not found:', todoId, fetchError)
       return { success: false, error: 'Task not found.' }
     }
 
+    console.log('[TodoStorage] Current task state:', { id: todo.id, isCompleted: todo.isCompleted })
     const { data: updatedTodo, error } = await this.updateTodo(todoId, {
       isCompleted: !todo.isCompleted,
     })
 
     if (error) {
+      console.error('[TodoStorage] Failed to update task:', error)
       return { success: false, error: 'Failed to update task.' }
     }
 
+    console.log('[TodoStorage] Task updated:', { id: updatedTodo?.id, isCompleted: updatedTodo?.isCompleted })
     return { success: true, error: '', todo: updatedTodo }
   }
 
   async createCheckoutTask(employeeId, customerId, cartId, customerName, planNames) {
+    console.log('[TodoStorage] createCheckoutTask called with:', { employeeId, customerId, cartId, customerName, planNames })
+    
     const customerLabel = customerName?.trim() || 'Customer'
     const planLabel = planNames?.length > 0
       ? planNames.join(', ')
@@ -249,22 +270,31 @@ export class TodoStorage {
 
     const taskName = `Complete checkout for ${customerLabel}: ${planLabel}`
 
-    // Check if checkout task already exists for this customer/cart
-    const { data: existingTodos } = await this.fetchTodosForEmployee(employeeId)
-    const existingTask = existingTodos.find(
-      (t) => t.cartId === cartId && !t.isCompleted
+    // Check if checkout task already exists for this customer across ALL employees
+    // This allows any employee to pick up where another left off
+    const { data: allTodos } = await this.fetchAllTodos()
+    console.log('[TodoStorage] All todos for customer lookup:', allTodos?.filter(t => t.customerId === customerId).map(t => ({ id: t.id, employeeId: t.employeeId, customerId: t.customerId, cartId: t.cartId, isCompleted: t.isCompleted })))
+    
+    // Find existing checkout task for this customer (not completed) - from ANY employee
+    const existingTask = allTodos?.find(
+      (t) => t.customerId === customerId && t.cartId && !t.isCompleted
     )
+    console.log('[TodoStorage] Found existing task?', existingTask ? { id: existingTask.id, employeeId: existingTask.employeeId, customerId: existingTask.customerId } : 'none')
 
     if (existingTask) {
-      // Update existing task
+      // Update existing task with new name, cart reference, and reassign to current employee
       const { data: updatedTodo, error } = await this.updateTodo(existingTask.id, {
         name: taskName,
+        cartId: cartId, // Update cart reference in case it changed
+        employeeId: employeeId, // Reassign to current employee
       })
 
       if (error) {
+        console.error('[TodoStorage] Failed to update existing task:', error)
         return { success: false, error: 'Failed to update task.', todo: null, found: true }
       }
 
+      console.log('[TodoStorage] Updated existing task and reassigned to employee:', updatedTodo?.id, employeeId)
       return { success: true, error: '', todo: updatedTodo, found: true, taskId: existingTask.id }
     }
 
@@ -280,6 +310,22 @@ export class TodoStorage {
     }
 
     return { success: true, error: '', todo, found: false, taskId: todo.id }
+  }
+
+  // Fetch existing checkout task for a customer (from any employee)
+  async fetchCheckoutTaskForCustomer(customerId) {
+    const { data: allTodos, error } = await this.fetchAllTodos()
+
+    if (error) {
+      return { data: null, error }
+    }
+
+    // Find active checkout task for this customer
+    const checkoutTask = allTodos?.find(
+      (t) => t.customerId === customerId && t.cartId && !t.isCompleted
+    )
+
+    return { data: checkoutTask ?? null, error: null }
   }
 
   // ============ Legacy Compatibility Methods ============

@@ -1,5 +1,6 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
 import { CustomerContext } from './CustomerContext.jsx';
+import { cartStorage } from '../storage/storageProvider.js';
 
 const CartContext = createContext();
 
@@ -33,6 +34,7 @@ export function CartProvider({ children }) {
     const { activeCustomerId } = useContext(CustomerContext);
     const [cartByCustomerId, setCartByCustomerId] = useState(loadCarts);
     const [savedCheckoutByCustomerId, setSavedCheckoutByCustomerId] = useState(loadSavedCheckout);
+    const [loadingCart, setLoadingCart] = useState(false);
 
     // Persist every customer's cart back to localStorage whenever they change so
     // the carts survive a page reload. This is the localStorage equivalent of the
@@ -46,7 +48,53 @@ export function CartProvider({ children }) {
         localStorage.setItem(CHECKOUT_SAVED_STORAGE_KEY, JSON.stringify(savedCheckoutByCustomerId));
     }, [savedCheckoutByCustomerId]);
 
-    // The active customer's cart, derived from the per-customer map.
+    // Load saved cart from database when customer changes
+    // This allows any employee to see a customer's saved checkout from another employee
+    useEffect(() => {
+        if (!activeCustomerId) return;
+
+        const loadSavedCartFromDb = async () => {
+            setLoadingCart(true);
+            try {
+                const { cart: savedCart, items } = await cartStorage.loadSavedCart(activeCustomerId);
+                
+                if (savedCart && items && items.length > 0) {
+                    console.log('[CartContext] Loaded saved cart from database:', savedCart.id, 'with', items.length, 'items');
+                    
+                    // Convert database items to local cart format
+                    const cartItems = items.map(item => ({
+                        id: item.planId,
+                        name: item.planName || item.name,
+                        price: item.planPrice || item.price,
+                        type: item.planType || item.type,
+                        lines: item.lineCount || 1,
+                        // Include other plan fields if available
+                        network: item.network,
+                        speed: item.speed,
+                        bestValue: item.bestValue,
+                    }));
+
+                    // Update local cart with database cart
+                    setCartByCustomerId((prev) => ({
+                        ...prev,
+                        [activeCustomerId]: cartItems,
+                    }));
+
+                    // Mark checkout as saved since it came from database
+                    setSavedCheckoutByCustomerId((prev) => ({
+                        ...prev,
+                        [activeCustomerId]: true,
+                    }));
+                }
+            } catch (error) {
+                console.error('[CartContext] Error loading saved cart:', error);
+            } finally {
+                setLoadingCart(false);
+            }
+        };
+
+        loadSavedCartFromDb();
+    }, [activeCustomerId]);    // The active customer's cart, derived from the per-customer map.
     const cart = useMemo(() => {
         if (!activeCustomerId) {
             return [];
@@ -191,7 +239,7 @@ export function CartProvider({ children }) {
     };
 
     return (
-        <CartContext.Provider value={{ cart, addToCart, addLine, removeLine, removeFromCart, cartByCustomerId, isCheckoutSaved, markCheckoutSaved, clearCheckoutSaved, clearCheckoutSavedForCustomer }}>
+        <CartContext.Provider value={{ cart, addToCart, addLine, removeLine, removeFromCart, cartByCustomerId, isCheckoutSaved, markCheckoutSaved, clearCheckoutSaved, clearCheckoutSavedForCustomer, loadingCart }}>
             {children}
         </CartContext.Provider>
     );

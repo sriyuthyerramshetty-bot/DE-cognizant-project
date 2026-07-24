@@ -3,6 +3,7 @@ import TextAsset from '../../assets/TextAssets.json'
 import { useTodo } from '../../context/TodoContext.jsx'
 import { CustomerContext } from '../../context/CustomerContext.jsx'
 import { useCart } from '../../context/CartContext.jsx'
+import { cartStorage } from '../../storage/storageProvider.js'
 import Notification from '../Notification.jsx'
 import DueDateInput from '../DueDateInput.jsx'
 
@@ -14,29 +15,54 @@ function SaveCheckoutButton({ cart, isFormValid }) {
     const [savedCheckoutTaskId, setSavedCheckoutTaskId] = useState(null)
     const dueDateInputRef = useRef(null)
     const [isDuePopoverOpen, setIsDuePopoverOpen] = useState(false)
+    const [isSaving, setIsSaving] = useState(false)
 
     // Button is disabled if the cart is empty or the form is invalid
     const isEmpty = cart.length === 0;
-    const isDisabled = isEmpty || !isFormValid || isCheckoutSaved;
+    const isDisabled = isEmpty || !isFormValid || isCheckoutSaved || isSaving;
 
     const savedTask = tasks.find((task) => task.id === savedCheckoutTaskId);
     
     const handleSaveCheckout = async (e) => {
         e.preventDefault();
-        const customerName = activeCustomer
-            ? `${activeCustomer.firstName ?? ''} ${activeCustomer.lastName ?? ''}`.trim()
-            : 'Customer'
-        const customerId = activeCustomer?.id ?? null
+        
+        if (!activeCustomer?.id) {
+            setNotice('Please select a customer first.')
+            return
+        }
+
+        setIsSaving(true)
+
+        const customerName = `${activeCustomer.firstName ?? ''} ${activeCustomer.lastName ?? ''}`.trim() || 'Customer'
+        const customerId = activeCustomer.id
         const planNames = cart.map((item) => item.name || item.planName).filter(Boolean)
 
-        const result = await createTodoFromCheckout({ customerName, cart, customerId, planNames })
+        // Save cart to database
+        const { success: cartSaved, error: cartError, cartId } = await cartStorage.saveCheckoutCart(customerId, cart)
+
+        if (!cartSaved) {
+            console.error('Failed to save cart:', cartError)
+            setNotice('Failed to save cart. Please try again.')
+            setIsSaving(false)
+            return
+        }
+
+        // Create todo with cart reference
+        const result = await createTodoFromCheckout({ 
+            customerName, 
+            cart: { id: cartId }, 
+            customerId, 
+            planNames 
+        })
+        
         markCheckoutSaved()
         setSavedCheckoutTaskId(result.taskId)
+        setIsSaving(false)
 
         if (result.found) {
-            setNotice('Todo item updated successfully!')
+            setNotice('Checkout saved and todo updated!')
         } else {
-            setNotice('Todo item created successfully!')
+            setNotice('Checkout saved and todo created!')
         }
     };
 

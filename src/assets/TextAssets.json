@@ -71,5 +71,19 @@
     "AddToCartButton": {
         "added": "Added",
         "addToCart": "Add to Cart"
+    },
+    "Chatbot": {
+        "title": "Verizon Assistant",
+        "onlineStatus": "We're online",
+        "greeting": "Hi there! 👋 I'm your Verizon Assistant. Ask me about plans, orders, or anything on the portal.",
+        "suggestions": [
+            "What plans do you offer?",
+            "How do I place an order?"
+        ],
+        "inputPlaceholder": "Enter message",
+        "openLabel": "Open chat assistant",
+        "closeLabel": "Minimize chat",
+        "refreshLabel": "Restart conversation",
+        "sendLabel": "Send message"
     }
 }

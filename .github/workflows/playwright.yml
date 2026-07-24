@@ -18,6 +18,7 @@ jobs:
       VITE_FIREBASE_APP_ID: "1:123456789:web:abc123"
       VITE_FIREBASE_MEASUREMENT_ID: "G-TEST123"
       # Dummy values for Supabase - tests don't actually call Supabase
+      # Just testing that the app can initialize the client with these values
       VITE_SUPABASE_URL: "https://test.supabase.co"
       VITE_SUPABASE_API_KEY: "test-supabase-key"
     steps:

@@ -4,7 +4,8 @@ import { CustomerContext } from './CustomerContext.jsx';
 const CartContext = createContext();
 
 // Key the per-customer carts live under in the browser's localStorage.
-const STORAGE_KEY = 'cartByCustomerId';
+const STORAGE_KEY = 'cartsByCustomerId';
+const CHECKOUT_SAVED_STORAGE_KEY = 'savedCheckoutByCustomerId';
 
 // Read any previously saved carts out of localStorage. This runs as the lazy
 // initial state so the carts are already populated on the very first render
@@ -19,9 +20,19 @@ function loadCarts() {
     }
 }
 
+function loadSavedCheckout() {
+    try {
+        const stored = localStorage.getItem(CHECKOUT_SAVED_STORAGE_KEY);
+        return stored ? JSON.parse(stored) : {};
+    } catch {
+        return {};
+    }
+}
+
 export function CartProvider({ children }) {
     const { activeCustomerId } = useContext(CustomerContext);
     const [cartByCustomerId, setCartByCustomerId] = useState(loadCarts);
+    const [savedCheckoutByCustomerId, setSavedCheckoutByCustomerId] = useState(loadSavedCheckout);
 
     // Persist every customer's cart back to localStorage whenever they change so
     // the carts survive a page reload. This is the localStorage equivalent of the
@@ -31,6 +42,10 @@ export function CartProvider({ children }) {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(cartByCustomerId));
     }, [cartByCustomerId]);
 
+    useEffect(() => {
+        localStorage.setItem(CHECKOUT_SAVED_STORAGE_KEY, JSON.stringify(savedCheckoutByCustomerId));
+    }, [savedCheckoutByCustomerId]);
+
     // The active customer's cart, derived from the per-customer map.
     const cart = useMemo(() => {
         if (!activeCustomerId) {
@@ -39,6 +54,30 @@ export function CartProvider({ children }) {
 
         return cartByCustomerId[activeCustomerId] ?? [];
     }, [activeCustomerId, cartByCustomerId]);
+
+    const isCheckoutSaved = useMemo(() => {
+        if (!activeCustomerId) {
+            return false;
+        }
+
+        return Boolean(savedCheckoutByCustomerId[activeCustomerId]);
+    }, [activeCustomerId, savedCheckoutByCustomerId]);
+
+    const clearCheckoutSavedForCustomer = (customerId) => {
+        if (!customerId) {
+            return;
+        }
+
+        setSavedCheckoutByCustomerId((previousSavedMap) => {
+            if (!previousSavedMap[customerId]) {
+                return previousSavedMap;
+            }
+
+            const nextSavedMap = { ...previousSavedMap };
+            delete nextSavedMap[customerId];
+            return nextSavedMap;
+        });
+    };
 
     const addToCart = (plan) => {
         if (!activeCustomerId) {
@@ -53,9 +92,70 @@ export function CartProvider({ children }) {
 
             return {
                 ...previousCarts,
-                [activeCustomerId]: [...currentCart, plan],
+                [activeCustomerId]: [...currentCart, { ...plan, lines: 1 }],
             };
         });
+
+        clearCheckoutSavedForCustomer(activeCustomerId);
+    };
+
+    // Add one line to a plan. If the plan isn't in the cart yet it's added with
+    // a single line; otherwise its existing line count is incremented.
+    const addLine = (plan) => {
+        if (!activeCustomerId) {
+            return;
+        }
+
+        setCartByCustomerId((previousCarts) => {
+            const currentCart = previousCarts[activeCustomerId] ?? [];
+            const exists = currentCart.some((cartPlan) => cartPlan.id === plan.id);
+
+            const nextCart = exists
+                ? currentCart.map((cartPlan) =>
+                    cartPlan.id === plan.id
+                        ? { ...cartPlan, lines: (cartPlan.lines ?? 1) + 1 }
+                        : cartPlan
+                )
+                : [...currentCart, { ...plan, lines: 1 }];
+
+            return {
+                ...previousCarts,
+                [activeCustomerId]: nextCart,
+            };
+        });
+
+        clearCheckoutSavedForCustomer(activeCustomerId);
+    };
+
+    // Remove one line from a plan. When the last line is removed the plan drops
+    // out of the cart entirely.
+    const removeLine = (planId) => {
+        if (!activeCustomerId) {
+            return;
+        }
+
+        setCartByCustomerId((previousCarts) => {
+            const currentCart = previousCarts[activeCustomerId] ?? [];
+            const target = currentCart.find((cartPlan) => cartPlan.id === planId);
+            if (!target) {
+                return previousCarts;
+            }
+
+            const nextCart = (target.lines ?? 1) <= 1
+                ? currentCart.filter((cartPlan) => cartPlan.id !== planId)
+                : currentCart.map((cartPlan) =>
+                    cartPlan.id === planId
+                        ? { ...cartPlan, lines: cartPlan.lines - 1 }
+                        : cartPlan
+                );
+
+            return {
+                ...previousCarts,
+                [activeCustomerId]: nextCart,
+            };
+        });
+
+        clearCheckoutSavedForCustomer(activeCustomerId);
     };
 
     const removeFromCart = (planId) => {
@@ -71,10 +171,27 @@ export function CartProvider({ children }) {
                 [activeCustomerId]: currentCart.filter((plan) => plan.id !== planId),
             };
         });
+
+        clearCheckoutSavedForCustomer(activeCustomerId);
+    };
+
+    const markCheckoutSaved = (customerId = activeCustomerId) => {
+        if (!customerId) {
+            return;
+        }
+
+        setSavedCheckoutByCustomerId((previousSavedMap) => ({
+            ...previousSavedMap,
+            [customerId]: true,
+        }));
+    };
+
+    const clearCheckoutSaved = (customerId = activeCustomerId) => {
+        clearCheckoutSavedForCustomer(customerId);
     };
 
     return (
-        <CartContext.Provider value={{ cart, addToCart, removeFromCart, cartByCustomerId }}>
+        <CartContext.Provider value={{ cart, addToCart, addLine, removeLine, removeFromCart, cartByCustomerId, isCheckoutSaved, markCheckoutSaved, clearCheckoutSaved, clearCheckoutSavedForCustomer }}>
             {children}
         </CartContext.Provider>
     );

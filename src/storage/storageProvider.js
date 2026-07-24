@@ -76,7 +76,6 @@ export const storageConnection = {
         .single()
 
       if (error && error.code !== 'PGRST116') {
-        // PGRST116 = no rows returned, which is expected if not found
         console.error(`Error fetching from ${tableName} by ${fieldName}:`, error)
         return { data: null, error }
       }
@@ -152,7 +151,7 @@ export const storageConnection = {
 // ============ Storage Instances ============
 // Pass the connection to each storage manager
 
-export const todoStorage = new TodoStorage()
-export const cartStorage = new CartStorage()
+export const todoStorage = new TodoStorage(storageConnection)
+export const cartStorage = new CartStorage(storageConnection)
 export const customerStorage = new CustomerStorage(storageConnection)
-export const employeeStorage = new EmployeeStorage()
+export const employeeStorage = new EmployeeStorage(storageConnection)

@@ -1,158 +1,451 @@
-const CART_STORAGE_KEY = 'cartsByCustomerId'
-const CHECKOUT_SAVED_STORAGE_KEY = 'savedCheckoutByCustomerId'
+const CARTS_CACHE_KEY = 'todo-app.carts-cache'
+const CART_ITEMS_CACHE_KEY = 'todo-app.cart-items-cache'
+const PLANS_CACHE_KEY = 'todo-app.plans-cache'
+
+const CARTS_TABLE = 'carts'
+const CART_ITEMS_TABLE = 'cart_items'
+const PLANS_TABLE = 'plans'
 
 export class CartStorage {
-  loadCarts() {
+  constructor(connection) {
+    this.connection = connection
+  }
+
+  isBrowser() {
+    return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined'
+  }
+
+  parseStoredJson(key, fallbackValue) {
+    if (!this.isBrowser()) {
+      return fallbackValue
+    }
+
     try {
-      const stored = localStorage.getItem(CART_STORAGE_KEY)
-      return stored ? JSON.parse(stored) : {}
+      const raw = window.localStorage.getItem(key)
+
+      if (!raw) {
+        return fallbackValue
+      }
+
+      const parsed = JSON.parse(raw)
+      return parsed ?? fallbackValue
     } catch {
-      return {}
+      return fallbackValue
     }
   }
 
-  saveCarts(cartByCustomerId) {
-    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cartByCustomerId))
+  generateUUID() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+      const r = (Math.random() * 16) | 0
+      const v = c === 'x' ? r : (r & 0x3) | 0x8
+      return v.toString(16)
+    })
   }
 
-  loadSavedCheckout() {
-    try {
-      const stored = localStorage.getItem(CHECKOUT_SAVED_STORAGE_KEY)
-      return stored ? JSON.parse(stored) : {}
-    } catch {
-      return {}
-    }
+  // ============ Cache Methods ============
+
+  loadCachedCarts() {
+    return this.parseStoredJson(CARTS_CACHE_KEY, [])
   }
 
-  saveSavedCheckout(savedCheckoutByCustomerId) {
-    localStorage.setItem(CHECKOUT_SAVED_STORAGE_KEY, JSON.stringify(savedCheckoutByCustomerId))
+  saveCachedCarts(carts) {
+    if (!this.isBrowser()) return
+    window.localStorage.setItem(CARTS_CACHE_KEY, JSON.stringify(carts))
   }
 
-  getCartForCustomer(cartByCustomerId, customerId) {
-    if (!customerId) {
-      return []
+  updateCachedCart(cart) {
+    if (!this.isBrowser() || !cart) return
+
+    const cached = this.loadCachedCarts()
+    const index = cached.findIndex((c) => c.id === cart.id)
+
+    if (index >= 0) {
+      cached[index] = cart
+    } else {
+      cached.unshift(cart)
     }
-    return cartByCustomerId[customerId] ?? []
+
+    this.saveCachedCarts(cached)
   }
 
-  isCheckoutSavedForCustomer(savedCheckoutByCustomerId, customerId) {
-    if (!customerId) {
-      return false
-    }
-    return Boolean(savedCheckoutByCustomerId[customerId])
+  loadCachedPlans() {
+    return this.parseStoredJson(PLANS_CACHE_KEY, [])
   }
 
-  addToCart(cartByCustomerId, customerId, plan) {
-    if (!customerId) {
-      return cartByCustomerId
-    }
+  saveCachedPlans(plans) {
+    if (!this.isBrowser()) return
+    window.localStorage.setItem(PLANS_CACHE_KEY, JSON.stringify(plans))
+  }
 
-    const currentCart = cartByCustomerId[customerId] ?? []
+  // ============ Transform Helpers ============
 
-    if (currentCart.some((cartPlan) => cartPlan.id === plan.id)) {
-      return cartByCustomerId
-    }
+  transformCartFromDb(dbCart) {
+    if (!dbCart) return null
 
     return {
-      ...cartByCustomerId,
-      [customerId]: [...currentCart, { ...plan, lines: 1 }],
+      id: dbCart.id,
+      customerId: dbCart.customer_id,
+      status: dbCart.status ?? 'draft',
+      createdAt: dbCart.created_at,
+      updatedAt: dbCart.updated_at,
     }
   }
 
-  addLine(cartByCustomerId, customerId, plan) {
-    if (!customerId) {
-      return cartByCustomerId
-    }
+  transformCartToDb(cart) {
+    const dbCart = {}
 
-    const currentCart = cartByCustomerId[customerId] ?? []
-    const exists = currentCart.some((cartPlan) => cartPlan.id === plan.id)
+    if (cart.id !== undefined) dbCart.id = cart.id
+    if (cart.customerId !== undefined) dbCart.customer_id = cart.customerId
+    if (cart.status !== undefined) dbCart.status = cart.status
+    if (cart.updatedAt !== undefined) dbCart.updated_at = cart.updatedAt
 
-    const nextCart = exists
-      ? currentCart.map((cartPlan) =>
-          cartPlan.id === plan.id
-            ? { ...cartPlan, lines: (cartPlan.lines ?? 1) + 1 }
-            : cartPlan
-        )
-      : [...currentCart, { ...plan, lines: 1 }]
+    return dbCart
+  }
+
+  transformCartItemFromDb(dbItem) {
+    if (!dbItem) return null
 
     return {
-      ...cartByCustomerId,
-      [customerId]: nextCart,
+      id: dbItem.id,
+      cartId: dbItem.cart_id,
+      planId: dbItem.plan_id,
+      lineCount: dbItem.line_count ?? 1,
+      createdAt: dbItem.created_at,
     }
   }
 
-  removeLine(cartByCustomerId, customerId, planId) {
-    if (!customerId) {
-      return cartByCustomerId
-    }
+  transformCartItemToDb(item) {
+    const dbItem = {}
 
-    const currentCart = cartByCustomerId[customerId] ?? []
-    const target = currentCart.find((cartPlan) => cartPlan.id === planId)
+    if (item.id !== undefined) dbItem.id = item.id
+    if (item.cartId !== undefined) dbItem.cart_id = item.cartId
+    if (item.planId !== undefined) dbItem.plan_id = item.planId
+    if (item.lineCount !== undefined) dbItem.line_count = item.lineCount
 
-    if (!target) {
-      return cartByCustomerId
-    }
+    return dbItem
+  }
 
-    const nextCart =
-      (target.lines ?? 1) <= 1
-        ? currentCart.filter((cartPlan) => cartPlan.id !== planId)
-        : currentCart.map((cartPlan) =>
-            cartPlan.id === planId
-              ? { ...cartPlan, lines: cartPlan.lines - 1 }
-              : cartPlan
-          )
+  transformPlanFromDb(dbPlan) {
+    if (!dbPlan) return null
 
     return {
-      ...cartByCustomerId,
-      [customerId]: nextCart,
+      id: dbPlan.id,
+      name: dbPlan.name ?? '',
+      description: dbPlan.description ?? '',
+      monthlyPrice: parseFloat(dbPlan.monthly_price) || 0,
+      isActive: dbPlan.is_active ?? true,
+      createdAt: dbPlan.created_at,
+      updatedAt: dbPlan.updated_at,
     }
   }
 
-  removeFromCart(cartByCustomerId, customerId, planId) {
-    if (!customerId) {
-      return cartByCustomerId
-    }
+  transformPlanToDb(plan) {
+    const dbPlan = {}
 
-    const currentCart = cartByCustomerId[customerId] ?? []
+    if (plan.id !== undefined) dbPlan.id = plan.id
+    if (plan.name !== undefined) dbPlan.name = plan.name
+    if (plan.description !== undefined) dbPlan.description = plan.description
+    if (plan.monthlyPrice !== undefined) dbPlan.monthly_price = plan.monthlyPrice
+    if (plan.isActive !== undefined) dbPlan.is_active = plan.isActive
 
-    return {
-      ...cartByCustomerId,
-      [customerId]: currentCart.filter((plan) => plan.id !== planId),
-    }
+    return dbPlan
   }
 
-  markCheckoutSaved(savedCheckoutByCustomerId, customerId) {
-    if (!customerId) {
-      return savedCheckoutByCustomerId
+  // ============ Plans Database Methods ============
+
+  async fetchPlans() {
+    const { data, error } = await this.connection.fetchAll(PLANS_TABLE, {
+      orderBy: 'name',
+      ascending: true,
+    })
+
+    if (error) {
+      const cached = this.loadCachedPlans()
+      return { data: cached, error, fromCache: true }
     }
 
-    return {
-      ...savedCheckoutByCustomerId,
-      [customerId]: true,
-    }
+    const plans = data
+      .filter((row) => row.is_active !== false)
+      .map((row) => this.transformPlanFromDb(row))
+
+    this.saveCachedPlans(plans)
+    return { data: plans, error: null, fromCache: false }
   }
 
-  clearCheckoutSaved(savedCheckoutByCustomerId, customerId) {
-    if (!customerId) {
-      return savedCheckoutByCustomerId
+  async fetchPlanById(planId) {
+    const cached = this.loadCachedPlans()
+    const cachedPlan = cached.find((p) => p.id === planId)
+
+    const { data, error } = await this.connection.fetchById(PLANS_TABLE, 'id', planId)
+
+    if (error) {
+      return { data: cachedPlan ?? null, error, fromCache: Boolean(cachedPlan) }
     }
 
-    if (!savedCheckoutByCustomerId[customerId]) {
-      return savedCheckoutByCustomerId
-    }
-
-    const nextSavedMap = { ...savedCheckoutByCustomerId }
-    delete nextSavedMap[customerId]
-    return nextSavedMap
+    return { data: this.transformPlanFromDb(data), error: null }
   }
 
-  clearCartForCustomer(cartByCustomerId, customerId) {
-    if (!customerId) {
-      return cartByCustomerId
+  // ============ Carts Database Methods ============
+
+  async fetchCartsForCustomer(customerId) {
+    const { data, error } = await this.connection.fetchAll(CARTS_TABLE, {
+      orderBy: 'created_at',
+      ascending: false,
+    })
+
+    if (error) {
+      return { data: [], error }
     }
 
-    const nextCarts = { ...cartByCustomerId }
-    delete nextCarts[customerId]
-    return nextCarts
+    const carts = data
+      .filter((row) => row.customer_id === customerId)
+      .map((row) => this.transformCartFromDb(row))
+
+    return { data: carts, error: null }
+  }
+
+  async fetchCartById(cartId) {
+    const { data, error } = await this.connection.fetchById(CARTS_TABLE, 'id', cartId)
+
+    if (error) {
+      return { data: null, error }
+    }
+
+    return { data: this.transformCartFromDb(data), error: null }
+  }
+
+  async fetchDraftCartForCustomer(customerId) {
+    const { data: allCarts, error } = await this.connection.fetchAll(CARTS_TABLE)
+
+    if (error) {
+      return { data: null, error }
+    }
+
+    const draftCart = allCarts.find(
+      (cart) => cart.customer_id === customerId && cart.status === 'draft'
+    )
+
+    return { data: draftCart ? this.transformCartFromDb(draftCart) : null, error: null }
+  }
+
+  async createCart(customerId) {
+    const newCart = {
+      id: this.generateUUID(),
+      customer_id: customerId,
+      status: 'draft',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }
+
+    const { data, error } = await this.connection.insert(CARTS_TABLE, newCart)
+
+    if (error) {
+      return { data: null, error }
+    }
+
+    const cart = this.transformCartFromDb(data)
+    this.updateCachedCart(cart)
+    return { data: cart, error: null }
+  }
+
+  async updateCartStatus(cartId, status) {
+    const { data, error } = await this.connection.update(CARTS_TABLE, 'id', cartId, {
+      status,
+      updated_at: new Date().toISOString(),
+    })
+
+    if (error) {
+      return { data: null, error }
+    }
+
+    const cart = this.transformCartFromDb(data)
+    this.updateCachedCart(cart)
+    return { data: cart, error: null }
+  }
+
+  async deleteCart(cartId) {
+    return await this.connection.delete(CARTS_TABLE, 'id', cartId)
+  }
+
+  // ============ Cart Items Database Methods ============
+
+  async fetchCartItems(cartId) {
+    const { data, error } = await this.connection.fetchAll(CART_ITEMS_TABLE)
+
+    if (error) {
+      return { data: [], error }
+    }
+
+    const items = data
+      .filter((row) => row.cart_id === cartId)
+      .map((row) => this.transformCartItemFromDb(row))
+
+    return { data: items, error: null }
+  }
+
+  async fetchCartItemsWithPlans(cartId) {
+    const { data: items, error: itemsError } = await this.fetchCartItems(cartId)
+
+    if (itemsError) {
+      return { data: [], error: itemsError }
+    }
+
+    const { data: plans } = await this.fetchPlans()
+    const plansMap = new Map(plans.map((p) => [p.id, p]))
+
+    const itemsWithPlans = items.map((item) => ({
+      ...item,
+      plan: plansMap.get(item.planId) ?? null,
+    }))
+
+    return { data: itemsWithPlans, error: null }
+  }
+
+  async addItemToCart(cartId, planId, lineCount = 1) {
+    // Check if item already exists
+    const { data: existingItems } = await this.fetchCartItems(cartId)
+    const existingItem = existingItems.find((item) => item.planId === planId)
+
+    if (existingItem) {
+      // Update line count
+      return await this.updateCartItemLineCount(existingItem.id, existingItem.lineCount + lineCount)
+    }
+
+    const newItem = {
+      id: this.generateUUID(),
+      cart_id: cartId,
+      plan_id: planId,
+      line_count: lineCount,
+      created_at: new Date().toISOString(),
+    }
+
+    const { data, error } = await this.connection.insert(CART_ITEMS_TABLE, newItem)
+
+    if (error) {
+      return { data: null, error }
+    }
+
+    return { data: this.transformCartItemFromDb(data), error: null }
+  }
+
+  async updateCartItemLineCount(itemId, lineCount) {
+    if (lineCount <= 0) {
+      return await this.removeCartItem(itemId)
+    }
+
+    const { data, error } = await this.connection.update(CART_ITEMS_TABLE, 'id', itemId, {
+      line_count: lineCount,
+    })
+
+    if (error) {
+      return { data: null, error }
+    }
+
+    return { data: this.transformCartItemFromDb(data), error: null }
+  }
+
+  async removeCartItem(itemId) {
+    return await this.connection.delete(CART_ITEMS_TABLE, 'id', itemId)
+  }
+
+  async clearCart(cartId) {
+    const { data: items } = await this.fetchCartItems(cartId)
+
+    for (const item of items) {
+      await this.removeCartItem(item.id)
+    }
+
+    return { success: true, error: null }
+  }
+
+  // ============ High-Level Methods ============
+
+  async getOrCreateDraftCart(customerId) {
+    // Try to find existing draft cart
+    const { data: existingCart } = await this.fetchDraftCartForCustomer(customerId)
+
+    if (existingCart) {
+      return { data: existingCart, error: null, isNew: false }
+    }
+
+    // Create new cart
+    const { data: newCart, error } = await this.createCart(customerId)
+
+    if (error) {
+      return { data: null, error, isNew: false }
+    }
+
+    return { data: newCart, error: null, isNew: true }
+  }
+
+  async getCartWithItems(customerId) {
+    const { data: cart } = await this.fetchDraftCartForCustomer(customerId)
+
+    if (!cart) {
+      return { cart: null, items: [] }
+    }
+
+    const { data: items } = await this.fetchCartItemsWithPlans(cart.id)
+
+    return { cart, items: items ?? [] }
+  }
+
+  async addPlanToCart(customerId, planId, lineCount = 1) {
+    const { data: cart, error: cartError } = await this.getOrCreateDraftCart(customerId)
+
+    if (cartError || !cart) {
+      return { success: false, error: cartError?.message ?? 'Failed to get cart' }
+    }
+
+    const { error: itemError } = await this.addItemToCart(cart.id, planId, lineCount)
+
+    if (itemError) {
+      return { success: false, error: itemError.message ?? 'Failed to add item' }
+    }
+
+    // Update cart timestamp
+    await this.connection.update(CARTS_TABLE, 'id', cart.id, {
+      updated_at: new Date().toISOString(),
+    })
+
+    return { success: true, error: null, cartId: cart.id }
+  }
+
+  async removePlanFromCart(customerId, planId) {
+    const { data: cart } = await this.fetchDraftCartForCustomer(customerId)
+
+    if (!cart) {
+      return { success: false, error: 'No cart found' }
+    }
+
+    const { data: items } = await this.fetchCartItems(cart.id)
+    const item = items.find((i) => i.planId === planId)
+
+    if (!item) {
+      return { success: false, error: 'Item not in cart' }
+    }
+
+    await this.removeCartItem(item.id)
+
+    return { success: true, error: null }
+  }
+
+  async updatePlanLineCount(customerId, planId, lineCount) {
+    const { data: cart } = await this.fetchDraftCartForCustomer(customerId)
+
+    if (!cart) {
+      return { success: false, error: 'No cart found' }
+    }
+
+    const { data: items } = await this.fetchCartItems(cart.id)
+    const item = items.find((i) => i.planId === planId)
+
+    if (!item) {
+      return { success: false, error: 'Item not in cart' }
+    }
+
+    await this.updateCartItemLineCount(item.id, lineCount)
+
+    return { success: true, error: null }
   }
 }

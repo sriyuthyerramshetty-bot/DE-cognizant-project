@@ -191,8 +191,8 @@ export class CustomerStorage {
         state: address.state ?? '',
         postalCode: address.postalCode ?? '',
       },
-      accountStatus: dbCustomer.account_status ?? 'active',
       createdAt: dbCustomer.created_at ?? new Date().toISOString(),
+      updatedAt: dbCustomer.updated_at ?? new Date().toISOString(),
     }
   }
 
@@ -204,8 +204,7 @@ export class CustomerStorage {
     if (customer.lastName !== undefined) dbCustomer.last_name = customer.lastName
     if (customer.phone !== undefined) dbCustomer.phone = customer.phone
     if (customer.email !== undefined) dbCustomer.email = customer.email
-    if (customer.accountStatus !== undefined) dbCustomer.account_status = customer.accountStatus
-    if (customer.createdAt !== undefined) dbCustomer.created_at = customer.createdAt
+    if (customer.updatedAt !== undefined) dbCustomer.updated_at = customer.updatedAt
 
     // Address is stored as JSONB in Supabase
     if (customer.address !== undefined) {
@@ -260,22 +259,13 @@ export class CustomerStorage {
     return String(value ?? '').replace(/\D/g, '')
   }
 
-  async generateCustomerId() {
-    // Fetch the max ID from database to generate the next one
-    const { data } = await this.connection.fetchAll(TABLE_NAME, {
-      orderBy: 'id',
-      ascending: false,
-      limit: 1,
+  generateUUID() {
+    // Generate a UUID v4
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+      const r = (Math.random() * 16) | 0
+      const v = c === 'x' ? r : (r & 0x3) | 0x8
+      return v.toString(16)
     })
-
-    if (!data || data.length === 0) {
-      return 'CUST-1001'
-    }
-
-    const match = String(data[0].id ?? '').match(/^CUST-(\d+)$/)
-    const nextNum = match ? Number(match[1]) + 1 : 1001
-
-    return `CUST-${String(nextNum).padStart(4, '0')}`
   }
 
   async createCustomer(payload) {
@@ -308,22 +298,21 @@ export class CustomerStorage {
     const nameParts = nameInput.split(/\s+/).filter(Boolean)
     const firstName = nameParts[0] ?? ''
     const lastName = nameParts.slice(1).join(' ')
-    const nextCustomerId = await this.generateCustomerId()
 
     const newCustomer = {
-      id: nextCustomerId,
+      id: this.generateUUID(),
       firstName,
       lastName,
       phone: normalizedPhone,
-      email: emailInput,
+      email: emailInput || null,
       address: {
         line1: addressInput,
         city: '',
         state: '',
         postalCode: '',
       },
-      accountStatus: 'active',
       createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     }
 
     // Insert to database

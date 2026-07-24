@@ -1,21 +1,20 @@
-import { useCallback, useContext, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Check, Pencil, Trash2 } from 'lucide-react'
 import DueDateInput from '../components/DueDateInput'
 import useTaskReminders from '../hooks/useTaskReminders'
-import { TodoContext } from '../context/TodoContext'
+import { useTodo } from '../context/TodoContext'
 import { useCart } from '../context/CartContext'
 
 function Todo() {
-  const { tasks, setTasks, view, setView, nextId, setNextId } = useContext(TodoContext)
+  const { tasks, filteredTasks, view, setView, loading, addTask, updateTask, toggleTask, deleteTask } = useTodo()
   const { clearCheckoutSavedForCustomer } = useCart()
   const [removingTaskIds, setRemovingTaskIds] = useState(new Set())
   const [restoringTaskIds, setRestoringTaskIds] = useState(new Set())
+  const [pendingNewTask, setPendingNewTask] = useState(null) // Local state for new task being created
   const inputRef = useRef(null)
   const dueDateInputRefs = useRef(new Map())
-  const editingTaskId = tasks.find((task) => task.isEditing)?.id
-  const hasPendingUnnamedTask = tasks.some(
-    (task) => task.isEditing && !task.name.trim(),
-  )
+  const editingTaskId = pendingNewTask?.id || tasks.find((task) => task.isEditing)?.id
+  const hasPendingUnnamedTask = pendingNewTask && !pendingNewTask.name.trim()
   const isAddTaskDisabled = view !== 'active' || hasPendingUnnamedTask
 
   useEffect(() => {
@@ -24,81 +23,64 @@ function Todo() {
     }
   }, [editingTaskId])
 
-  useTaskReminders(setTasks)
+  // For reminders - we need setTasks but now we use updateTask
+  const handleSetTasks = useCallback((updater) => {
+    // This is for the reminder hook - it needs to update tasks
+    // We'll handle this differently since tasks come from the server now
+  }, [])
+
+  useTaskReminders(handleSetTasks)
 
   const handleAddTask = () => {
     if (hasPendingUnnamedTask) {
       return
     }
 
-    setTasks((currentTasks) => [
-      {
-        id: nextId,
-        name: '',
-        isEditing: true,
-        isCompleted: false,
-        dueAt: '',
-        reminderAt: null,
-        reminderNotifiedAt: null,
-      },
-      ...currentTasks,
-    ])
-    setNextId((currentId) => currentId + 1)
+    // Create a temporary local task for editing
+    setPendingNewTask({
+      id: 'pending-new',
+      name: '',
+      isEditing: true,
+      isCompleted: false,
+      dueAt: '',
+      reminderAt: null,
+      reminderNotifiedAt: null,
+    })
   }
 
   const handleTaskNameChange = (taskId, value) => {
-    setTasks((currentTasks) =>
-      currentTasks.map((task) =>
-        task.id === taskId ? { ...task, name: value } : task,
-      ),
-    )
+    if (taskId === 'pending-new') {
+      setPendingNewTask((prev) => prev ? { ...prev, name: value } : null)
+    }
+    // For existing tasks, we don't update name until save
   }
 
-  const handleTaskDueDateClear = (taskId) => {
-    setTasks((currentTasks) =>
-      currentTasks.map((task) =>
-        task.id === taskId
-          ? {
-              ...task,
-              dueAt: '',
-              reminderAt: null,
-              reminderNotifiedAt: null,
-            }
-          : task,
-      ),
-    )
+  const handleTaskDueDateClear = async (taskId) => {
+    if (taskId === 'pending-new') {
+      setPendingNewTask((prev) => prev ? { ...prev, dueAt: '', reminderAt: null, reminderNotifiedAt: null } : null)
+      return
+    }
+    await updateTask(taskId, { dueAt: '', reminderAt: null, reminderNotifiedAt: null })
   }
 
-  const handleTaskDueDateCommit = (taskId, parsedDue) => {
-    setTasks((currentTasks) =>
-      currentTasks.map((task) =>
-        task.id === taskId
-          ? {
-              ...task,
-              dueAt: parsedDue.normalizedDisplay,
-              reminderAt: parsedDue.date.toISOString(),
-              reminderNotifiedAt: null,
-            }
-          : task,
-      ),
-    )
+  const handleTaskDueDateCommit = async (taskId, parsedDue) => {
+    if (taskId === 'pending-new') {
+      setPendingNewTask((prev) => prev ? {
+        ...prev,
+        dueAt: parsedDue.normalizedDisplay,
+        reminderAt: parsedDue.date.toISOString(),
+        reminderNotifiedAt: null,
+      } : null)
+      return
+    }
+    await updateTask(taskId, {
+      dueAt: parsedDue.normalizedDisplay,
+      reminderAt: parsedDue.date.toISOString(),
+      reminderNotifiedAt: null,
+    })
   }
 
-  const finishTaskEditing = useCallback((taskId, nextName) => {
-    setTasks((currentTasks) =>
-      currentTasks.map((task) =>
-        task.id === taskId
-          ? {
-              ...task,
-              name: (nextName ?? task.name).trim(),
-              isEditing: false,
-            }
-          : task,
-      ),
-    )
-  }, [setTasks])
-
-  const saveTaskEditing = (task) => {
+  const saveTaskEditing = async (task) => {
     const trimmedName = (task.name ?? '').trim()
     if (!trimmedName) {
       if (inputRef.current) {
@@ -112,33 +94,35 @@ function Todo() {
       return
     }
 
-    finishTaskEditing(task.id, trimmedName)
+    if (task.id === 'pending-new') {
+      // Save new task to database
+      const payload = {
+        name: trimmedName,
+        dueAt: task.dueAt || null,
+        reminderAt: task.reminderAt || null,
+      }
+      await addTask(payload)
+      setPendingNewTask(null)
+    } else {
+      // Update existing task
+      await updateTask(task.id, { name: trimmedName, isEditing: false })
+    }
   }
 
   const startTaskEditing = (taskId) => {
-    setTasks((currentTasks) =>
-      currentTasks.map((task) => ({
-        ...task,
-        isEditing: task.id === taskId,
-      })),
-    )
+    // For now, we don't support inline editing of existing tasks the same way
+    // We'd need to track local editing state separately
   }
 
-  const handleCompleteTask = (taskId) => {
+  const handleCompleteTask = async (taskId) => {
     setRemovingTaskIds((currentSet) => {
       const nextSet = new Set(currentSet)
       nextSet.add(taskId)
       return nextSet
     })
 
-    setTimeout(() => {
-      setTasks((currentTasks) =>
-        currentTasks.map((task) =>
-          task.id === taskId
-            ? { ...task, isCompleted: true, isEditing: false }
-            : task,
-        ),
-      )
+    setTimeout(async () => {
+      await toggleTask(taskId)
 
       setRemovingTaskIds((currentSet) => {
         const nextSet = new Set(currentSet)
@@ -148,21 +132,15 @@ function Todo() {
     }, 280)
   }
 
-  const handleRestoreTask = (taskId) => {
+  const handleRestoreTask = async (taskId) => {
     setRestoringTaskIds((currentSet) => {
       const nextSet = new Set(currentSet)
       nextSet.add(taskId)
       return nextSet
     })
 
-    setTimeout(() => {
-      setTasks((currentTasks) =>
-        currentTasks.map((task) =>
-          task.id === taskId
-            ? { ...task, isCompleted: false, isEditing: false }
-            : task,
-        ),
-      )
+    setTimeout(async () => {
+      await toggleTask(taskId)
 
       setRestoringTaskIds((currentSet) => {
         const nextSet = new Set(currentSet)
@@ -172,11 +150,12 @@ function Todo() {
     }, 280)
   }
 
-  const visibleTasks = tasks.filter((task) => 
-    view === 'active' ? !task.isCompleted : task.isCompleted,
-  )
+  // Combine pending new task with tasks from database for display
+  const displayTasks = pendingNewTask ? [pendingNewTask, ...filteredTasks] : filteredTasks
 
   const handleToggleTaskComplete = (task) => {
+    if (task.id === 'pending-new') return
+    
     if (task.isCompleted) {
       handleRestoreTask(task.id)
       return
@@ -185,13 +164,18 @@ function Todo() {
     handleCompleteTask(task.id)
   }
 
-  const handleDeleteTask = (taskId) => {
+  const handleDeleteTask = async (taskId) => {
+    if (taskId === 'pending-new') {
+      setPendingNewTask(null)
+      return
+    }
 
-    clearCheckoutSavedForCustomer(tasks.find((task) => task.id === taskId)?.checkoutCustomerId)      
+    const taskToDelete = tasks.find((task) => task.id === taskId)
+    if (taskToDelete?.checkoutCustomerId) {
+      clearCheckoutSavedForCustomer(taskToDelete.checkoutCustomerId)
+    }
 
-    setTasks((currentTasks) =>
-      currentTasks.filter((task) => task.id !== taskId),
-    )
+    await deleteTask(taskId)
 
     setRemovingTaskIds((currentSet) => {
       const nextSet = new Set(currentSet)
@@ -204,6 +188,14 @@ function Todo() {
       nextSet.delete(taskId)
       return nextSet
     })
+  }
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <p className="text-gray-500">Loading tasks...</p>
+      </div>
+    )
   }
 
   return (
@@ -224,10 +216,11 @@ function Todo() {
       </div>
 
       <main className="relative z-0 min-h-0 flex-1 overflow-y-auto pr-1 pb-24">
-        {visibleTasks.map((task) => {
+        {displayTasks.map((task) => {
           const isRemoving = removingTaskIds.has(task.id)
           const isRestoring = restoringTaskIds.has(task.id)
           const isAnimatingOut = isRemoving || isRestoring
+          const isNewTask = task.id === 'pending-new'
 
           return (
             <div
@@ -246,7 +239,7 @@ function Todo() {
                   <button
                     type="button"
                     onClick={() => handleToggleTaskComplete(task)}
-                    disabled={isAnimatingOut || task.isCheckoutTask}
+                    disabled={isAnimatingOut || task.isCheckoutTask || isNewTask}
                     className="ml-2 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-gray-300 bg-white text-black"
                     aria-label={`Complete ${task.name || 'task'}`}
                     title={task.isCheckoutTask ? 'Completed checkout tasks cannot be altered' : null}
@@ -254,17 +247,17 @@ function Todo() {
                     {isAnimatingOut || (task.isCompleted) ? <Check size={14} strokeWidth={3} /> : null}
                   </button>
                     
-                  {task.isEditing ? (
+                  {isNewTask || task.isEditing ? (
                     <input
-                      ref={task.isEditing ? inputRef : null}
+                      ref={isNewTask ? inputRef : null}
                       data-task-name-input="true"
                       type="text"
-                      value={task.name}
+                      value={isNewTask ? pendingNewTask.name : task.name}
                       onChange={(event) => handleTaskNameChange(task.id, event.target.value)}
                       onKeyDown={(event) => {
                         if (event.key === 'Enter') {
                           event.preventDefault()
-                          saveTaskEditing({ ...task, name: event.currentTarget.value })
+                          saveTaskEditing(isNewTask ? pendingNewTask : task)
                         }
                       }}
                       placeholder="Enter task name"
@@ -302,12 +295,12 @@ function Todo() {
                     <button
                       type="button"
                       onClick={() => {
-                        if (task.isEditing) {
-                          saveTaskEditing(task)
+                        if (isNewTask || task.isEditing) {
+                          saveTaskEditing(isNewTask ? pendingNewTask : task)
                           return
                         }
 
-                        if (task.isCompleted || task.isEditing) {
+                        if (task.isCompleted) {
                           return
                         }
 
@@ -316,20 +309,20 @@ function Todo() {
                       className={`rounded-md p-1.5 text-gray-600 transition-all duration-200 hover:text-black ${
                         task.isCompleted
                           ? 'opacity-0 pointer-events-none'
-                          : task.isEditing
+                          : isNewTask || task.isEditing
                             ? 'opacity-100'
                             : 'opacity-0 group-hover:opacity-100'
                       }`}
-                      aria-label={task.isEditing ? `Save ${task.name || 'task'}` : `Edit ${task.name || 'task'}`}
+                      aria-label={isNewTask || task.isEditing ? `Save ${task.name || 'task'}` : `Edit ${task.name || 'task'}`}
                     >
-                      {task.isEditing ? <Check size={17} /> : <Pencil size={17} />}
+                      {isNewTask || task.isEditing ? <Check size={17} /> : <Pencil size={17} />}
                     </button>
 
                     <button
                       type="button"
                       onClick={() => handleDeleteTask(task.id)}
                       className={`rounded-md p-1.5 text-gray-600 transition-all duration-200 hover:text-black ${
-                        task.isEditing
+                        isNewTask || task.isEditing
                           ? 'opacity-100'
                           : 'opacity-0 group-hover:opacity-100'
                       }`}

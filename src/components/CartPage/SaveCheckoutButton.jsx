@@ -1,13 +1,13 @@
 import { useContext, useRef, useState } from 'react'
 import TextAsset from '../../assets/TextAssets.json'
-import { TodoContext } from '../../context/TodoContext.jsx'
+import { useTodo } from '../../context/TodoContext.jsx'
 import { CustomerContext } from '../../context/CustomerContext.jsx'
 import { useCart } from '../../context/CartContext.jsx'
 import Notification from '../Notification.jsx'
 import DueDateInput from '../DueDateInput.jsx'
 
 function SaveCheckoutButton({ cart, isFormValid }) {
-    const { createTodoFromCheckout, tasks, setTasks } = useContext(TodoContext)
+    const { createTodoFromCheckout, tasks, updateTask } = useTodo()
     const { activeCustomer } = useContext(CustomerContext)
     const { isCheckoutSaved, markCheckoutSaved } = useCart()
     const [notice, setNotice] = useState('')
@@ -21,14 +21,15 @@ function SaveCheckoutButton({ cart, isFormValid }) {
 
     const savedTask = tasks.find((task) => task.id === savedCheckoutTaskId);
     
-    const handleSaveCheckout = (e) => {
+    const handleSaveCheckout = async (e) => {
         e.preventDefault();
         const customerName = activeCustomer
             ? `${activeCustomer.firstName ?? ''} ${activeCustomer.lastName ?? ''}`.trim()
             : 'Customer'
         const customerId = activeCustomer?.id ?? null
+        const planNames = cart.map((item) => item.name || item.planName).filter(Boolean)
 
-        const result = createTodoFromCheckout({ customerName, cart, customerId })
+        const result = await createTodoFromCheckout({ customerName, cart, customerId, planNames })
         markCheckoutSaved()
         setSavedCheckoutTaskId(result.taskId)
 
@@ -39,29 +40,16 @@ function SaveCheckoutButton({ cart, isFormValid }) {
         }
     };
 
-    const handleTaskDueDateClear = (taskId) => {
-        setTasks((currentTasks) =>
-        currentTasks.map((task) =>
-            task.id === taskId
-            ? { ...task, dueAt: '', reminderAt: null, reminderNotifiedAt: null }
-            : task,
-        ),
-        )
+    const handleTaskDueDateClear = async (taskId) => {
+        await updateTask(taskId, { dueAt: '', reminderAt: null, reminderNotifiedAt: null })
     }
 
-    const handleTaskDueDateCommit = (taskId, parsedDue) => {
-        setTasks((currentTasks) =>
-        currentTasks.map((task) =>
-            task.id === taskId
-            ? {
-                ...task,
-                dueAt: parsedDue.normalizedDisplay,
-                reminderAt: parsedDue.date.toISOString(),
-                reminderNotifiedAt: null,
-                }
-            : task,
-        ),
-        )
+    const handleTaskDueDateCommit = async (taskId, parsedDue) => {
+        await updateTask(taskId, {
+            dueAt: parsedDue.normalizedDisplay,
+            reminderAt: parsedDue.date.toISOString(),
+            reminderNotifiedAt: null,
+        })
     }
 
     const handleDoneClick = () => {

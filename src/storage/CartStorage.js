@@ -131,9 +131,12 @@ export class CartStorage {
     return {
       id: dbPlan.id,
       name: dbPlan.name ?? '',
-      description: dbPlan.description ?? '',
-      monthlyPrice: parseFloat(dbPlan.monthly_price) || 0,
-      isActive: dbPlan.is_active ?? true,
+      type: dbPlan.type ?? '',
+      network: dbPlan.network ?? '',
+      speed: dbPlan.speed ?? '',
+      price: `$${parseFloat(dbPlan.price) || 0}/mo`,
+      monthlyPrice: parseFloat(dbPlan.price) || 0,
+      bestValue: dbPlan.best_value ?? false,
       createdAt: dbPlan.created_at,
       updatedAt: dbPlan.updated_at,
     }
@@ -144,9 +147,11 @@ export class CartStorage {
 
     if (plan.id !== undefined) dbPlan.id = plan.id
     if (plan.name !== undefined) dbPlan.name = plan.name
-    if (plan.description !== undefined) dbPlan.description = plan.description
-    if (plan.monthlyPrice !== undefined) dbPlan.monthly_price = plan.monthlyPrice
-    if (plan.isActive !== undefined) dbPlan.is_active = plan.isActive
+    if (plan.type !== undefined) dbPlan.type = plan.type
+    if (plan.network !== undefined) dbPlan.network = plan.network
+    if (plan.speed !== undefined) dbPlan.speed = plan.speed
+    if (plan.monthlyPrice !== undefined) dbPlan.price = plan.monthlyPrice
+    if (plan.bestValue !== undefined) dbPlan.best_value = plan.bestValue
 
     return dbPlan
   }
@@ -164,9 +169,7 @@ export class CartStorage {
       return { data: cached, error, fromCache: true }
     }
 
-    const plans = data
-      .filter((row) => row.is_active !== false)
-      .map((row) => this.transformPlanFromDb(row))
+    const plans = data.map((row) => this.transformPlanFromDb(row))
 
     this.saveCachedPlans(plans)
     return { data: plans, error: null, fromCache: false }
@@ -378,6 +381,46 @@ export class CartStorage {
     return { data: newCart, error: null, isNew: true }
   }
 
+  // Get existing cart (draft OR saved) or create new one - used for saveCheckout to reuse the same cart
+  async getOrCreateCartForCheckout(customerId) {
+    const { data: allCarts, error } = await this.connection.fetchAll(CARTS_TABLE)
+
+    if (error) {
+      console.error('[CartStorage] Error fetching carts:', error)
+      return { data: null, error, isNew: false }
+    }
+
+    // Filter to carts for this customer that are draft or saved
+    const customerCarts = allCarts
+      ?.filter(
+        (cart) =>
+          cart.customer_id === customerId &&
+          (cart.status === 'draft' || cart.status === 'saved')
+      )
+      // Sort by updated_at descending to get the most recent
+      .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
+
+    console.log('[CartStorage] Customer carts found:', customerCarts?.map(c => ({ id: c.id, status: c.status, updated_at: c.updated_at })))
+
+    const existingCart = customerCarts?.[0] // Get most recently updated
+
+    if (existingCart) {
+      console.log('[CartStorage] Using existing cart:', existingCart.id, 'status:', existingCart.status)
+      return { data: this.transformCartFromDb(existingCart), error: null, isNew: false }
+    }
+
+    console.log('[CartStorage] No existing cart found, creating new one')
+    // Create new cart
+    const { data: newCart, error: createError } = await this.createCart(customerId)
+
+    if (createError) {
+      return { data: null, error: createError, isNew: false }
+    }
+
+    console.log('[CartStorage] Created new cart:', newCart?.id)
+    return { data: newCart, error: null, isNew: true }
+  }
+
   async getCartWithItems(customerId) {
     const { data: cart } = await this.fetchDraftCartForCustomer(customerId)
 
@@ -447,5 +490,105 @@ export class CartStorage {
     await this.updateCartItemLineCount(item.id, lineCount)
 
     return { success: true, error: null }
+  }
+
+  async saveCheckoutCart(customerId, cartItems) {
+    if (!customerId || !cartItems || cartItems.length === 0) {
+      return { success: false, error: 'No items to save', cartId: null }
+    }
+
+    // Get or create a cart for this customer (reuses existing draft/saved cart)
+    const { data: cart, error: cartError } = await this.getOrCreateCartForCheckout(customerId)
+
+    if (cartError || !cart) {
+      return { success: false, error: cartError?.message ?? 'Failed to create cart', cartId: null }
+    }
+
+    // Clear existing items in the cart
+    await this.clearCart(cart.id)
+
+    // Add each item from the local cart to the database cart
+    // Note: Local plans have numeric IDs, but cart_items.plan_id expects UUID
+    // So we need to find matching plans in the database by name
+    const { data: dbPlans, error: plansError } = await this.fetchPlans()
+    
+    if (plansError || !dbPlans || dbPlans.length === 0) {
+      console.error('Failed to fetch plans from database:', plansError)
+      return { success: false, error: 'Could not fetch plans from database', cartId: cart.id }
+    }
+
+    // Create a map for case-insensitive matching
+    const dbPlansMap = new Map(dbPlans.map((p) => [p.name.toLowerCase().trim(), p]))
+
+    let itemsSaved = 0
+    for (const item of cartItems) {
+      // Try to find a matching plan in the database by name (case-insensitive)
+      const itemName = (item.name || '').toLowerCase().trim()
+      const dbPlan = dbPlansMap.get(itemName)
+      
+      if (dbPlan) {
+        const lineCount = item.lines ?? 1
+        const { error: itemError } = await this.addItemToCart(cart.id, dbPlan.id, lineCount)
+
+        if (itemError) {
+          console.error('Failed to add item to cart:', itemError)
+        } else {
+          itemsSaved++
+        }
+      } else {
+        console.warn(`Plan "${item.name}" not found in database. Available plans:`, dbPlans.map(p => p.name))
+      }
+    }
+
+    // Update cart status to 'saved' and timestamp
+    const { data: updatedCart, error: updateError } = await this.updateCartStatus(cart.id, 'saved')
+
+    if (updateError) {
+      return { success: false, error: 'Failed to update cart status', cartId: cart.id }
+    }
+
+    return { 
+      success: true, 
+      error: null, 
+      cartId: cart.id, 
+      cart: updatedCart,
+      itemsSaved,
+      itemsSkipped: cartItems.length - itemsSaved
+    }
+  }
+
+  async loadSavedCart(customerId) {
+    // Find saved cart for customer (from any employee)
+    const { data: allCarts } = await this.connection.fetchAll(CARTS_TABLE)
+    
+    // Get most recent saved cart for this customer
+    const customerSavedCarts = allCarts
+      ?.filter((cart) => cart.customer_id === customerId && cart.status === 'saved')
+      .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
+
+    const savedCart = customerSavedCarts?.[0]
+
+    if (!savedCart) {
+      return { cart: null, items: [] }
+    }
+
+    const { data: itemsWithPlans } = await this.fetchCartItemsWithPlans(savedCart.id)
+
+    // Flatten items with plan data for easier use
+    const items = (itemsWithPlans ?? []).map(item => ({
+      ...item,
+      // Include plan details directly on the item
+      planName: item.plan?.name,
+      planPrice: item.plan?.price,
+      planType: item.plan?.type,
+      network: item.plan?.network,
+      speed: item.plan?.speed,
+      bestValue: item.plan?.bestValue,
+    }))
+
+    return { 
+      cart: this.transformCartFromDb(savedCart), 
+      items
+    }
   }
 }

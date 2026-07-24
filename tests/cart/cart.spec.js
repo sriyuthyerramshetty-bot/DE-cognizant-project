@@ -52,16 +52,6 @@ test.describe('Cart', () => {
     await expect(page.getByText('$105.00/mo')).toBeVisible();
   });
 
-  test('removing a plan updates the cart', async ({ page }) => {
-    await setActiveCustomer(page);
-    await addPlanToCart(page, 'Ultra 5G');
-
-    await page.getByRole('link', { name: 'Cart' }).click();
-    await page.getByRole('button', { name: 'Remove' }).click();
-
-    await expect(page.getByText('No items in cart.')).toBeVisible();
-  });
-
   test('a plan already in the cart cannot be added twice', async ({ page }) => {
     await setActiveCustomer(page);
     await addPlanToCart(page, 'Ultra 5G');

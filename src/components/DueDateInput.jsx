@@ -187,7 +187,7 @@ const DueDateInput = forwardRef(function DueDateInput({
   }, [taskId, value, reminderAt, isEditable])
 
   useImperativeHandle(ref, () => ({
-    commitNow: () => {
+    commitNow: async () => {
       const { selectedDate: latestDate, timeText: latestTime, meridiem: latestMeridiem } =
         draftRef.current
       const latestParsed = buildParsedDue(latestDate, latestTime, latestMeridiem)
@@ -198,8 +198,12 @@ const DueDateInput = forwardRef(function DueDateInput({
 
       if (!latestParsed) {
         if (!latestDate && !latestTime.trim() && value) {
-          onClear(taskId)
-          return { ok: true, reason: 'cleared' }
+          try {
+            await onClear(taskId)
+            return { ok: true, reason: 'cleared' }
+          } catch (err) {
+            return { ok: false, reason: 'error' }
+          }
         }
 
         if (!latestDate && !latestTime.trim()) {
@@ -215,8 +219,12 @@ const DueDateInput = forwardRef(function DueDateInput({
 
       if (isValid) {
         maybeRequestNotificationPermission()
-        onCommit(taskId, latestParsed)
-        return { ok: true, reason: 'saved' }
+        try {
+          const res = await onCommit(taskId, latestParsed)
+          return { ok: true, reason: 'saved', result: res }
+        } catch (err) {
+          return { ok: false, reason: 'error' }
+        }
       }
 
       return { ok: false, reason: 'past' }

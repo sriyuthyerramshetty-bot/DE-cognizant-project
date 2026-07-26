@@ -12,6 +12,7 @@ function useTaskReminders(setTasks) {
       return undefined
     }
 
+
     const intervalId = window.setInterval(() => {
       if (!canSendNotifications()) {
         return
@@ -32,9 +33,12 @@ function useTaskReminders(setTasks) {
           }
 
           changed = true
-          new Notification('Task Reminder', {
-            body: getNotificationBody(task),
-          })
+          try {
+            new Notification('Task Reminder', {
+              body: getNotificationBody(task),
+            })
+          } catch (err) {
+          }
 
           return {
             ...task,

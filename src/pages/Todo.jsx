@@ -6,7 +6,7 @@ import { useTodo } from '../context/TodoContext'
 import { useCart } from '../context/CartContext'
 
 function Todo() {
-  const { tasks, filteredTasks, view, setView, loading, addTask, updateTask, toggleTask, deleteTask } = useTodo()
+  const { tasks, filteredTasks, view, setView, loading, addTask, updateTask, toggleTask, deleteTask, setTasks } = useTodo()
   const { clearCheckoutSavedForCustomer } = useCart()
   const [removingTaskIds, setRemovingTaskIds] = useState(new Set())
   const [restoringTaskIds, setRestoringTaskIds] = useState(new Set())
@@ -17,19 +17,78 @@ function Todo() {
   const hasPendingUnnamedTask = pendingNewTask && !pendingNewTask.name.trim()
   const isAddTaskDisabled = view !== 'active' || hasPendingUnnamedTask
 
+  const saveTaskEditing = useCallback(async (task) => {
+    const trimmedName = (task?.name ?? '').trim()
+    if (!trimmedName) {
+      if (inputRef.current) {
+        inputRef.current.focus()
+      }
+      return
+    }
+
+    const dueDateSaveResult = await dueDateInputRefs.current.get(task.id)?.commitNow?.()
+    if (dueDateSaveResult?.ok === false) {
+      return
+    }
+
+    if (task.id === 'pending-new') {
+      const payload = {
+        name: trimmedName,
+        dueAt: dueDateSaveResult?.result?.iso ?? task.dueAt ?? null,
+        reminderAt: dueDateSaveResult?.result?.iso ?? task.reminderAt ?? null,
+      }
+      await addTask(payload)
+      setPendingNewTask(null)
+    } else {
+      await updateTask(task.id, { name: trimmedName, isEditing: false })
+    }
+  }, [addTask, updateTask])
+
   useEffect(() => {
     if (editingTaskId && inputRef.current) {
       inputRef.current.focus()
     }
   }, [editingTaskId])
 
-  // For reminders - we need setTasks but now we use updateTask
-  const handleSetTasks = useCallback((updater) => {
-    // This is for the reminder hook - it needs to update tasks
-    // We'll handle this differently since tasks come from the server now
-  }, [])
+  useEffect(() => {
+    if (!editingTaskId) {
+      return
+    }
 
-  useTaskReminders(handleSetTasks)
+    const handleDocumentMouseDown = (event) => {
+      const target = event.target
+      if (!(target instanceof Element)) {
+        return
+      }
+
+      const path = event.composedPath ? event.composedPath() : []
+      const clickedInsideEditingRow = path.some((node) =>
+        node instanceof Element && node.closest?.(`[data-task-row-id="${editingTaskId}"]`)
+      )
+      const clickedInsideDatePicker = path.some((node) =>
+        node instanceof Element && node.closest?.('.react-datepicker, .react-datepicker-popper')
+      )
+
+      if (clickedInsideEditingRow || clickedInsideDatePicker) {
+        return
+      }
+
+      const taskToSave = editingTaskId === 'pending-new'
+        ? pendingNewTask
+        : tasks.find((task) => task.id === editingTaskId)
+
+      if (taskToSave) {
+        void saveTaskEditing(taskToSave)
+      }
+    }
+
+    document.addEventListener('mousedown', handleDocumentMouseDown)
+    return () => document.removeEventListener('mousedown', handleDocumentMouseDown)
+  }, [editingTaskId, pendingNewTask, saveTaskEditing, tasks])
+
+  // Hook uses a setTasks-like function to update reminderNotifiedAt locally.
+  // Pass the real `setTasks` from context so notifications can be scheduled.
+  useTaskReminders(setTasks)
 
   const handleAddTask = () => {
     if (hasPendingUnnamedTask) {
@@ -51,8 +110,14 @@ function Todo() {
   const handleTaskNameChange = (taskId, value) => {
     if (taskId === 'pending-new') {
       setPendingNewTask((prev) => prev ? { ...prev, name: value } : null)
+      return
     }
-    // For existing tasks, we don't update name until save
+
+    setTasks((prevTasks) =>
+      prevTasks.map((task) =>
+        task.id === taskId ? { ...task, name: value, isEditing: true } : task
+      )
+    )
   }
 
   const handleTaskDueDateClear = async (taskId) => {
@@ -71,7 +136,7 @@ function Todo() {
         reminderAt: parsedDue.date.toISOString(),
         reminderNotifiedAt: null,
       } : null)
-      return
+      return { normalizedDisplay: parsedDue.normalizedDisplay, iso: parsedDue.date.toISOString() }
     }
     await updateTask(taskId, {
       dueAt: parsedDue.normalizedDisplay,
@@ -80,38 +145,12 @@ function Todo() {
     })
   }
 
-  const saveTaskEditing = async (task) => {
-    const trimmedName = (task.name ?? '').trim()
-    if (!trimmedName) {
-      if (inputRef.current) {
-        inputRef.current.focus()
-      }
-      return
-    }
-
-    const dueDateSaveResult = dueDateInputRefs.current.get(task.id)?.commitNow?.()
-    if (dueDateSaveResult?.ok === false) {
-      return
-    }
-
-    if (task.id === 'pending-new') {
-      // Save new task to database
-      const payload = {
-        name: trimmedName,
-        dueAt: task.dueAt || null,
-        reminderAt: task.reminderAt || null,
-      }
-      await addTask(payload)
-      setPendingNewTask(null)
-    } else {
-      // Update existing task
-      await updateTask(task.id, { name: trimmedName, isEditing: false })
-    }
-  }
-
   const startTaskEditing = (taskId) => {
-    // For now, we don't support inline editing of existing tasks the same way
-    // We'd need to track local editing state separately
+    setTasks((prevTasks) =>
+      prevTasks.map((task) =>
+        task.id === taskId ? { ...task, isEditing: true } : task
+      )
+    )
   }
 
   const handleCompleteTask = async (taskId) => {
@@ -295,7 +334,7 @@ function Todo() {
                       type="button"
                       onClick={() => {
                         if (isNewTask || task.isEditing) {
-                          saveTaskEditing(isNewTask ? pendingNewTask : task)
+                          void saveTaskEditing(isNewTask ? pendingNewTask : task)
                           return
                         }
 

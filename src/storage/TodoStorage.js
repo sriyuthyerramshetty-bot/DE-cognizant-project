@@ -1,6 +1,21 @@
+import { formatDateOnly, formatDateTime } from '../utils/dueDate'
+
 const TODOS_CACHE_KEY = 'todo-app.todos-cache'
 
 const TODOS_TABLE = 'todos'
+
+const normalizeDateField = (value, fallbackToDateOnly = false) => {
+  if (!value) return ''
+
+  const date = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+
+  if (fallbackToDateOnly && date.getHours() === 0 && date.getMinutes() === 0 && date.getSeconds() === 0) {
+    return formatDateOnly(date)
+  }
+
+  return formatDateTime(date)
+}
 
 export class TodoStorage {
   constructor(connection) {
@@ -77,6 +92,10 @@ export class TodoStorage {
   transformFromDb(dbTodo) {
     if (!dbTodo) return null
 
+    const normalizedReminderAt = dbTodo.reminder_at
+      ? new Date(dbTodo.reminder_at).toISOString()
+      : null
+
     return {
       id: dbTodo.id,
       employeeId: dbTodo.employee_id,
@@ -84,9 +103,11 @@ export class TodoStorage {
       cartId: dbTodo.cart_id ?? null,
       name: dbTodo.name ?? '',
       isCompleted: dbTodo.is_completed ?? false,
-      dueAt: dbTodo.due_at ?? '',
-      reminderAt: dbTodo.reminder_at ?? null,
-      reminderNotifiedAt: dbTodo.reminder_notified_at ?? null,
+      dueAt: normalizeDateField(dbTodo.due_at, !normalizedReminderAt),
+      reminderAt: normalizedReminderAt,
+      reminderNotifiedAt: dbTodo.reminder_notified_at
+        ? new Date(dbTodo.reminder_notified_at).toISOString()
+        : null,
       createdAt: dbTodo.created_at,
       updatedAt: dbTodo.updated_at,
       // Computed for backwards compatibility

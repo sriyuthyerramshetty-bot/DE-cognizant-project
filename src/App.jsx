@@ -13,6 +13,7 @@ import ProtectedRoute from './components/ProtectedRoute.jsx'
 import { plans } from '../server/data/data.js'
 import { AuthProvider } from './context/AuthContext.jsx'
 import { CartProvider } from './context/CartContext.jsx'
+import { CustomerProvider } from './context/CustomerContext.jsx'
 import { UserInfoProvider } from './context/UserInfoContext.jsx'
 import { TodoProvider } from './context/TodoContext.jsx'
 
@@ -24,9 +25,10 @@ function App() {
 
   return (
     <AuthProvider>
-      <CartProvider>
-        <UserInfoProvider>
-          <TodoProvider>
+      <CustomerProvider>
+        <CartProvider>
+          <UserInfoProvider>
+            <TodoProvider>
             <Routes>
               {/* Public route — no sidebar */}
               <Route path="/login" element={<LoginPage />} />
@@ -47,7 +49,8 @@ function App() {
           </TodoProvider>
         </UserInfoProvider>
       </CartProvider>
-    </AuthProvider>
+    </CustomerProvider>
+  </AuthProvider>
   )
 }
 

@@ -1,137 +1,178 @@
-import { createContext, useCallback, useEffect, useMemo, useState } from 'react'
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react'
+
+import { todoStorage } from '../storage/storageProvider'
+import { useAuth } from './AuthContext'
 
 export const TodoContext = createContext(null)
 
-const initialTasks = [
-  {
-    id: 1,
-    name: 'Jogging',
-    isEditing: false,
-    isCompleted: false,
-    dueAt: '',
-    reminderAt: null,
-    reminderNotifiedAt: null,
-  },
-]
-
-const TODO_STORAGE_KEY = 'todoState'
-
-function loadTodoState() {
-  try {
-    const stored = localStorage.getItem(TODO_STORAGE_KEY)
-    if (!stored) {
-      return {
-        tasks: initialTasks,
-        view: 'active',
-        nextId: 2,
-      }
-    }
-
-    const parsed = JSON.parse(stored)
-
-    return {
-      tasks: Array.isArray(parsed.tasks) ? parsed.tasks : initialTasks,
-      view: parsed.view === 'completed' ? 'completed' : 'active',
-      nextId: Number.isFinite(parsed.nextId) ? parsed.nextId : 2,
-    }
-  } catch {
-    return {
-      tasks: initialTasks,
-      view: 'active',
-      nextId: 2,
-    }
-  }
-}
-
-const loadedTodoState = loadTodoState()
-
 export function TodoProvider({ children }) {
-  const [tasks, setTasks] = useState(loadedTodoState.tasks)
-  const [view, setView] = useState(loadedTodoState.view)
-  const [nextId, setNextId] = useState(loadedTodoState.nextId)
+  const { employee } = useAuth()
+  const employeeId = employee?.id
 
+  const [tasks, setTasks] = useState([])
+  const [view, setView] = useState('active')
+  const [loading, setLoading] = useState(true)
+
+  // Load todos from Supabase when employee changes
   useEffect(() => {
-    localStorage.setItem(
-      TODO_STORAGE_KEY,
-      JSON.stringify({ tasks, view, nextId }),
+    const loadTodos = async () => {
+      if (!employeeId) {
+        setTasks([])
+        setLoading(false)
+        return
+      }
+
+      setLoading(true)
+      const { data, error } = await todoStorage.fetchTodosForEmployee(employeeId)
+
+      if (error) {
+        console.error('[TodoContext] Failed to load todos:', error)
+      }
+
+      setTasks(data || [])
+      setLoading(false)
+    }
+
+    loadTodos()
+  }, [employeeId])
+
+  // Add a new task
+  const addTask = useCallback(
+    async (payload) => {
+      if (!employeeId) {
+        console.error('[TodoContext] No employee ID - cannot create task')
+        return { success: false, error: 'Not logged in' }
+      }
+
+      const { success, error, todo } = await todoStorage.createTodo(employeeId, payload)
+
+      if (success && todo) {
+        setTasks((prev) => [todo, ...prev])
+      }
+
+      return { success, error, todo }
+    },
+    [employeeId]
+  )
+
+  // Update a task
+  const updateTask = useCallback(async (taskId, updates) => {
+    const { data: updatedTodo, error } = await todoStorage.updateTodo(taskId, updates)
+
+    if (error) {
+      console.error('[TodoContext] Failed to update task:', error)
+      return { success: false, error }
+    }
+
+    setTasks((prev) =>
+      prev.map((task) => (task.id === taskId ? updatedTodo : task))
     )
-  }, [tasks, view, nextId])
 
-  const createTodoFromCheckout = useCallback(({ customerName, cart, customerId }) => {
-    const plans = Array.isArray(cart) ? cart : []
-    const planNames = plans.map((plan) => plan.name).filter(Boolean)
-    const customerLabel = customerName?.trim() || 'Customer'
-    const planLabel = planNames.length > 0 ? planNames.join(', ') : 'saved checkout items'
-    const taskName = `Complete checkout for ${customerLabel}: ${planLabel}`
+    return { success: true, todo: updatedTodo }
+  }, [])
 
-    let found = false;
-    let savedTaskId = null
+  // Toggle task completion
+  const toggleTask = useCallback(async (taskId) => {
+    const { success, todo } = await todoStorage.toggleTodoComplete(taskId)
 
-    setTasks((currentTasks) => {
-      let found1 = false
-      const nextTasks = []
+    if (success && todo) {
+      setTasks((prev) =>
+        prev.map((task) => (task.id === taskId ? todo : task))
+      )
+    }
 
-      for (const task of currentTasks) {
-        const isSameCustomerCheckoutTask =
-          task.isCheckoutTask === true &&
-          task.checkoutCustomerId &&
-          customerId &&
-          task.checkoutCustomerId === customerId &&
-          task.isCompleted === false
+    return { success, todo }
+  }, [])
 
+  // Delete a task
+  const deleteTask = useCallback(async (taskId) => {
+    const result = await todoStorage.deleteTodo(taskId)
 
-        if (!isSameCustomerCheckoutTask) {
-          nextTasks.push(task)
-          continue
-        }
+    if (result.success) {
+      setTasks((prev) => prev.filter((task) => task.id !== taskId))
+    }
 
-        if (!found1) {
-          found1 = true
-          found = true
-          savedTaskId = task.id
-          nextTasks.push({
-            ...task,
-            name: taskName,
-            isEditing: false,
-          })
-        }
+    return result
+  }, [])
+
+  // Create checkout task (from cart page)
+  const createTodoFromCheckout = useCallback(
+    async ({ customerName, cart, customerId, planNames }) => {
+      if (!employeeId) {
+        console.error('[TodoContext] No employee ID - cannot create checkout task')
+        return { success: false, found: false }
       }
 
-      if (!found1) {
-        const newTask ={
-          id: Date.now(),
-          name: taskName,
-          isEditing: false,
-          isCompleted: false,
-          dueAt: '',
-          reminderAt: null,
-          reminderNotifiedAt: null,
-          isCheckoutTask: true,
-          checkoutCustomerId: customerId ?? null,
+      const { success, found, taskId, todo } = await todoStorage.createCheckoutTask(
+        employeeId,
+        customerId,
+        cart?.id,
+        customerName,
+        planNames
+      )
+
+      if (success && todo) {
+        if (found) {
+          // Updated existing task
+          setTasks((prev) =>
+            prev.map((task) => (task.id === taskId ? todo : task))
+          )
+        } else {
+          // Created new task
+          setTasks((prev) => [todo, ...prev])
         }
-        savedTaskId = newTask.id
-        nextTasks.unshift(newTask)
+        setView('active')
       }
 
-      return nextTasks
-    })
+      return { success, found, taskId }
+    },
+    [employeeId]
+  )
 
-    setView('active')
-    return {found, taskId: savedTaskId}
-  }, [setTasks, setView])
+  // Filtered tasks based on current view
+  const filteredTasks = useMemo(() => {
+    switch (view) {
+      case 'active':
+        return tasks.filter((t) => !t.isCompleted)
+      case 'completed':
+        return tasks.filter((t) => t.isCompleted)
+      default:
+        return tasks
+    }
+  }, [tasks, view])
 
   const value = useMemo(
     () => ({
       tasks,
-      setTasks,
+      filteredTasks,
       view,
       setView,
-      nextId,
-      setNextId,
+      loading,
+      addTask,
+      updateTask,
+      toggleTask,
+      deleteTask,
       createTodoFromCheckout,
+      // Legacy compatibility
+      setTasks,
     }),
-    [tasks, view, nextId, createTodoFromCheckout],
+    [tasks, filteredTasks, view, loading, addTask, updateTask, toggleTask, deleteTask, createTodoFromCheckout]
   )
 
-  return <TodoContext.Provider value={value}>{children}</TodoContext.Provider>
+  return (
+    <TodoContext.Provider value={value}>
+      {children}
+    </TodoContext.Provider>
+  )
+}
+
+export function useTodo() {
+  return useContext(TodoContext)
 }

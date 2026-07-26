@@ -1,214 +1,152 @@
-import { createContext, useCallback, useEffect, useMemo, useState } from 'react'
-import customersData from '../../server/data/customers.json'
+import { createContext, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { customerStorage, employeeStorage } from '../storage/storageProvider'
+import { useAuth } from './AuthContext'
 
 export const CustomerContext = createContext(null)
 
-const CUSTOMERS_STORAGE_KEY = 'todo-app.customers'
-const SELECTED_CUSTOMER_IDS_STORAGE_KEY = 'todo-app.selected-customer-ids'
-const ACTIVE_CUSTOMER_ID_STORAGE_KEY = 'todo-app.active-customer-id'
-const CUSTOMERS_STORAGE_VERSION_KEY = 'todo-app.customers-storage-version'
-const CURRENT_CUSTOMERS_STORAGE_VERSION = '2'
-
-const isBrowser = () => typeof window !== 'undefined' && typeof window.localStorage !== 'undefined'
-
-const parseStoredJson = (key, fallbackValue) => {
-  if (!isBrowser()) {
-    return fallbackValue
-  }
-
-  try {
-    const raw = window.localStorage.getItem(key)
-
-    if (!raw) {
-      return fallbackValue
-    }
-
-    const parsed = JSON.parse(raw)
-    return parsed ?? fallbackValue
-  } catch {
-    return fallbackValue
-  }
-}
-
-const shouldHydrateFromStorage = () => {
-  if (!isBrowser()) {
-    return false
-  }
-
-  const storedVersion = window.localStorage.getItem(CUSTOMERS_STORAGE_VERSION_KEY)
-  return storedVersion === CURRENT_CUSTOMERS_STORAGE_VERSION
-}
-
-const getInitialCustomers = () => {
-  if (!shouldHydrateFromStorage()) {
-    return customersData ?? []
-  }
-
-  const storedCustomers = parseStoredJson(CUSTOMERS_STORAGE_KEY, null)
-
-  if (Array.isArray(storedCustomers) && storedCustomers.length > 0) {
-    return storedCustomers
-  }
-
-  return customersData ?? []
-}
-
-const getInitialSelectedCustomers = (customers) => {
-  if (!shouldHydrateFromStorage()) {
-    return []
-  }
-
-  const selectedCustomerIds = parseStoredJson(SELECTED_CUSTOMER_IDS_STORAGE_KEY, [])
-
-  if (!Array.isArray(selectedCustomerIds) || selectedCustomerIds.length === 0) {
-    return []
-  }
-
-  return selectedCustomerIds
-    .map((customerId) => customers.find((customer) => customer.id === customerId))
-    .filter(Boolean)
-}
-
-const getInitialActiveCustomerId = (selectedCustomers) => {
-  if (!shouldHydrateFromStorage()) {
-    return null
-  }
-
-  const activeCustomerId = parseStoredJson(ACTIVE_CUSTOMER_ID_STORAGE_KEY, null)
-
-  if (!activeCustomerId) {
-    return null
-  }
-
-  const isSelected = selectedCustomers.some((customer) => customer.id === activeCustomerId)
-  return isSelected ? activeCustomerId : null
-}
-
-const buildCustomerId = (customers) => {
-  const maxId = customers.reduce((currentMaxId, customer) => {
-    const match = String(customer.id ?? '').match(/^CUST-(\d+)$/)
-
-    if (!match) {
-      return currentMaxId
-    }
-
-    return Math.max(currentMaxId, Number(match[1]))
-  }, 1000)
-
-  return `CUST-${String(maxId + 1).padStart(4, '0')}`
-}
-
 export function CustomerProvider({ children }) {
-  const initialCustomers = getInitialCustomers()
-  const initialSelectedCustomers = getInitialSelectedCustomers(initialCustomers)
-  const initialActiveCustomerId = getInitialActiveCustomerId(initialSelectedCustomers)
+  const { employee } = useAuth()
+  const employeeId = employee?.id
 
-  const [customers, setCustomers] = useState(() => initialCustomers)
-  const [selectedCustomers, setSelectedCustomers] = useState(() => initialSelectedCustomers)
-  const [lookupPhone, setLookupPhone] = useState('')                   
+  const [customers, setCustomers] = useState([])
+  const [selectedCustomers, setSelectedCustomers] = useState([])
+  const [lookupPhone, setLookupPhone] = useState('')
   const [lookupError, setLookupError] = useState('')
-  const [activeCustomerId, setActiveCustomerId] = useState(() => initialActiveCustomerId)
+  const [activeCustomerId, setActiveCustomerId] = useState(null)
+  const [isLoading, setIsLoading] = useState(true)
+  
+  const lastEmployeeIdRef = useRef(null)
 
-  const normalizePhone = useCallback((value) => value.replace(/\D/g, ''), [])
+  // Load customers and employee's customer views when employee changes
+  useEffect(() => {
+    if (!employeeId) {
+      setSelectedCustomers([])
+      setActiveCustomerId(null)
+      setIsLoading(false)
+      return
+    }
 
-  const addCustomerByPhone = useCallback((phoneInput) => {
+    // Skip if same employee
+    if (lastEmployeeIdRef.current === employeeId) {
+      return
+    }
+    lastEmployeeIdRef.current = employeeId
+
+    const loadData = async () => {
+      setIsLoading(true)
+
+      // Fetch all customers
+      const { data: dbCustomers } = await customerStorage.fetchCustomers()
+      setCustomers(dbCustomers ?? [])
+
+      // Fetch this employee's customer views
+      const { data: views } = await employeeStorage.fetchCustomerViewsForEmployee(employeeId)
+
+      if (views && views.length > 0 && dbCustomers) {
+        // Map view customer IDs to actual customer objects
+        const viewedCustomerIds = views.map((v) => v.customerId)
+        const viewedCustomers = viewedCustomerIds
+          .map((id) => dbCustomers.find((c) => c.id === id))
+          .filter(Boolean)
+
+        setSelectedCustomers(viewedCustomers)
+
+        // Set most recently viewed as active
+        if (viewedCustomers.length > 0) {
+          setActiveCustomerId(viewedCustomers[0].id)
+        }
+      } else {
+        setSelectedCustomers([])
+        setActiveCustomerId(null)
+      }
+
+      setIsLoading(false)
+    }
+
+    loadData()
+  }, [employeeId])
+
+  const normalizePhone = useCallback((value) => String(value ?? '').replace(/\D/g, ''), [])
+
+  // Save customer view to database when adding a customer
+  const saveCustomerView = useCallback(async (customerId) => {
+    if (!employeeId) return
+    await employeeStorage.upsertCustomerView(employeeId, customerId)
+  }, [employeeId])
+
+  const addCustomerByPhone = useCallback(async (phoneInput) => {
     const normalized = normalizePhone(phoneInput)
-    const match = customers.find((c) => normalizePhone(c.phone) === normalized)
+
+    // First check local state
+    let match = customers.find((c) => normalizePhone(c.phone) === normalized)
+
+    // If not found locally, try database
+    if (!match) {
+      const { data: dbCustomer } = await customerStorage.fetchCustomerByPhone(normalized)
+      if (dbCustomer) {
+        match = dbCustomer
+        setCustomers((prev) => {
+          if (prev.some((c) => c.id === dbCustomer.id)) return prev
+          return [...prev, dbCustomer]
+        })
+      }
+    }
 
     if (!match) {
       setLookupError('No customer found for that phone number.')
       return false
     }
 
+    // Save to employee's customer views in database
+    await saveCustomerView(match.id)
+
     setSelectedCustomers((prev) => {
       if (prev.some((customer) => customer.id === match.id)) {
         return prev
       }
-
       return [...prev, match]
     })
     setActiveCustomerId(match.id)
     setLookupError('')
     return true
-  }, [customers, normalizePhone])
+  }, [customers, normalizePhone, saveCustomerView])
 
-  const addCustomer = useCallback((payload) => {
-    const nameInput = String(payload?.name ?? '').trim()
-    const phoneInput = String(payload?.phone ?? '').trim()
-    const emailInput = String(payload?.email ?? '').trim()
-    const addressInput = String(payload?.address ?? '').trim()
+  const addCustomer = useCallback(async (payload) => {
+    const result = await customerStorage.createCustomer(payload)
 
-    if (!phoneInput) {
-      setLookupError('Phone is required.')
+    if (!result.success) {
+      setLookupError(result.error)
       return false
     }
 
-    const normalizedPhone = normalizePhone(phoneInput)
+    const customer = result.customer
 
-    if (!normalizedPhone) {
-      setLookupError('Please enter a valid phone number.')
-      return false
-    }
-
-    const existingCustomer = customers.find(
-      (customer) => normalizePhone(customer.phone) === normalizedPhone,
-    )
-
-    if (existingCustomer) {
-      setSelectedCustomers((previousCustomers) => {
-        const alreadySelected = previousCustomers.some(
-          (customer) => customer.id === existingCustomer.id,
-        )
-
-        if (alreadySelected) {
-          return previousCustomers
-        }
-
-        return [...previousCustomers, existingCustomer]
+    if (result.isExisting) {
+      setCustomers((prev) => {
+        if (prev.some((c) => c.id === customer.id)) return prev
+        return [...prev, customer]
       })
-      setActiveCustomerId(existingCustomer.id)
-      setLookupError('')
-      return true
+    } else {
+      setCustomers((prev) => [...prev, customer])
     }
 
-    if (!nameInput) {
-      setLookupError('Name is required for a new customer.')
-      return false
-    }
+    // Save to employee's customer views in database
+    await saveCustomerView(customer.id)
 
-    const nameParts = nameInput.split(/\s+/).filter(Boolean)
-    const firstName = nameParts[0] ?? ''
-    const lastName = nameParts.slice(1).join(' ')
-    const nextCustomerId = buildCustomerId(customers)
-
-    const newCustomer = {
-      id: nextCustomerId,
-      firstName,
-      lastName,
-      phone: normalizedPhone,
-      email: emailInput,
-      address: {
-        line1: addressInput,
-        city: '',
-        state: '',
-        postalCode: '',
-      },
-      accountStatus: 'active',
-      createdAt: new Date().toISOString(),
-    }
-
-    setCustomers((previousCustomers) => [...previousCustomers, newCustomer])
-    setSelectedCustomers((previousCustomers) => [...previousCustomers, newCustomer])
-    setActiveCustomerId(newCustomer.id)
+    setSelectedCustomers((prev) => {
+      if (prev.some((c) => c.id === customer.id)) return prev
+      return [...prev, customer]
+    })
+    setActiveCustomerId(customer.id)
     setLookupError('')
     return true
-  }, [customers, normalizePhone])
+  }, [saveCustomerView])
 
   const activeCustomer = selectedCustomers.find(
     (customer) => customer.id === activeCustomerId,
   ) ?? null
 
-  const selectActiveCustomer = useCallback((customerId) => {
+  const selectActiveCustomer = useCallback(async (customerId) => {
     const isCustomerAvailable = selectedCustomers.some(
       (customer) => customer.id === customerId,
     )
@@ -217,10 +155,22 @@ export function CustomerProvider({ children }) {
       return
     }
 
-    setActiveCustomerId(customerId)
-  }, [selectedCustomers])
+    // Update last_viewed_at in database
+    await saveCustomerView(customerId)
 
-  const removeSelectedCustomer = useCallback((customerId) => {
+    setActiveCustomerId(customerId)
+  }, [selectedCustomers, saveCustomerView])
+
+  const removeSelectedCustomer = useCallback(async (customerId) => {
+    // Remove from database
+    if (employeeId) {
+      const { data: views } = await employeeStorage.fetchCustomerViewsForEmployee(employeeId)
+      const viewToDelete = views?.find((v) => v.customerId === customerId)
+      if (viewToDelete) {
+        await employeeStorage.deleteCustomerView(viewToDelete.id)
+      }
+    }
+
     setSelectedCustomers((previousCustomers) => {
       const removedIndex = previousCustomers.findIndex(
         (customer) => customer.id === customerId,
@@ -252,104 +202,73 @@ export function CustomerProvider({ children }) {
 
       return nextCustomers
     })
-  }, [])
+  }, [employeeId])
 
-  const updateActiveCustomerField = useCallback((fieldName, fieldValue) => {
-    setActiveCustomerId((currentActiveId) => {
-      if (!currentActiveId) {
-        return currentActiveId
-      }
+  const updateActiveCustomerField = useCallback(async (fieldName, fieldValue) => {
+    if (!activeCustomerId) {
+      return
+    }
 
-      const nextName = String(fieldValue ?? '')
+    const currentCustomer = customers.find((c) => c.id === activeCustomerId)
+    if (!currentCustomer) {
+      return
+    }
 
-      const applyFieldUpdate = (customer) => {
-        if (customer.id !== currentActiveId) {
-          return customer
-        }
+    const updates = customerStorage.buildCustomerFieldUpdate(currentCustomer, fieldName, fieldValue)
 
-        if (fieldName === 'name') {
-          const nameParts = nextName.trim().split(/\s+/).filter(Boolean)
-          const firstName = nameParts[0] ?? ''
-          const lastName = nameParts.slice(1).join(' ')
+    // Update in database
+    const { data: updatedCustomer, error } = await customerStorage.updateCustomer(activeCustomerId, updates)
 
-          return {
-            ...customer,
-            firstName,
-            lastName,
-          }
-        }
+    if (error) {
+      console.error('Failed to update customer:', error)
+      return
+    }
 
-        if (fieldName === 'email') {
-          return {
-            ...customer,
-            email: nextName,
-          }
-        }
-
-        if (fieldName === 'phone') {
-          return {
-            ...customer,
-            phone: nextName,
-          }
-        }
-
-        if (fieldName === 'address') {
-          return {
-            ...customer,
-            address: {
-              ...(customer.address ?? {}),
-              line1: nextName,
-            },
-          }
-        }
-
+    // Update local state
+    const applyUpdate = (customer) => {
+      if (customer.id !== activeCustomerId) {
         return customer
       }
+      return updatedCustomer
+    }
 
-      setCustomers((previousCustomers) => previousCustomers.map(applyFieldUpdate))
-      setSelectedCustomers((previousCustomers) => previousCustomers.map(applyFieldUpdate))
+    setCustomers((prev) => prev.map(applyUpdate))
+    setSelectedCustomers((prev) => prev.map(applyUpdate))
+  }, [activeCustomerId, customers])
 
-      return currentActiveId
-    })
-  }, [])
+  const clearCustomerHistory = useCallback(async () => {
+    // Remove all views from database for this employee
+    if (employeeId) {
+      const { data: views } = await employeeStorage.fetchCustomerViewsForEmployee(employeeId)
+      if (views) {
+        for (const view of views) {
+          await employeeStorage.deleteCustomerView(view.id)
+        }
+      }
+    }
 
-  const clearCustomerHistory = useCallback(() => {
-    setCustomers(customersData ?? [])
     setSelectedCustomers([])
     setActiveCustomerId(null)
     setLookupError('')
+  }, [employeeId])
+
+  const refreshCustomers = useCallback(async () => {
+    const { data: dbCustomers, error } = await customerStorage.fetchCustomers()
+
+    if (error) {
+      console.error('Failed to refresh customers:', error)
+      return
+    }
+
+    setCustomers(dbCustomers ?? [])
+
+    // Update selected customers with fresh data
+    setSelectedCustomers((prev) => {
+      return prev
+        .map((selected) => dbCustomers.find((c) => c.id === selected.id))
+        .filter(Boolean)
+    })
   }, [])
-
-  useEffect(() => {
-    if (!isBrowser()) {
-      return
-    }
-
-    window.localStorage.setItem(CUSTOMERS_STORAGE_VERSION_KEY, CURRENT_CUSTOMERS_STORAGE_VERSION)
-    window.localStorage.setItem(CUSTOMERS_STORAGE_KEY, JSON.stringify(customers))
-  }, [customers])
-
-  useEffect(() => {
-    if (!isBrowser()) {
-      return
-    }
-
-    const selectedCustomerIds = selectedCustomers.map((customer) => customer.id)
-    window.localStorage.setItem(SELECTED_CUSTOMER_IDS_STORAGE_KEY, JSON.stringify(selectedCustomerIds))
-  }, [selectedCustomers])
-
-  useEffect(() => {
-    if (!isBrowser()) {
-      return
-    }
-
-    if (!activeCustomerId) {
-      window.localStorage.removeItem(ACTIVE_CUSTOMER_ID_STORAGE_KEY)
-      return
-    }
-
-    window.localStorage.setItem(ACTIVE_CUSTOMER_ID_STORAGE_KEY, JSON.stringify(activeCustomerId))
-  }, [activeCustomerId])
 
   const value = useMemo(() => ({
     customers,
@@ -367,6 +286,8 @@ export function CustomerProvider({ children }) {
     selectActiveCustomer,
     removeSelectedCustomer,
     updateActiveCustomerField,
+    isLoading,
+    refreshCustomers,
   }), [
     customers,
     selectedCustomers,
@@ -380,6 +301,8 @@ export function CustomerProvider({ children }) {
     selectActiveCustomer,
     removeSelectedCustomer,
     updateActiveCustomerField,
+    isLoading,
+    refreshCustomers,
   ])
 
   return <CustomerContext.Provider value={value}>{children}</CustomerContext.Provider>

@@ -8,7 +8,8 @@ function PlanBox({ plan }) {
 
     const { cart, addToCart, addLine, removeLine } = useCart();
 
-    const isInCart = cart.some((p) => p.id === plan.id);
+    const normalizePlanName = (value) => (value ?? '').toString().trim().toLowerCase();
+    const isInCart = cart.some((p) => normalizePlanName(p?.name || p?.planName) === normalizePlanName(plan?.name));
 
     return (
         <div className="relative border p-4 pb-3 rounded-lg shadow-md flex flex-col h-53 w-full overflow-hidden">

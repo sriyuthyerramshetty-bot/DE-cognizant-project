@@ -16,6 +16,7 @@ import { CartProvider } from './context/CartContext.jsx'
 import { CustomerProvider } from './context/CustomerContext.jsx'
 import { UserInfoProvider } from './context/UserInfoContext.jsx'
 import { TodoProvider } from './context/TodoContext.jsx'
+import { NotificationProvider } from './context/NotificationContext.jsx'
 
 function App() {
   // Card view vs. List view toggle for the Plans page. Kept here (above the
@@ -29,25 +30,27 @@ function App() {
         <CartProvider>
           <UserInfoProvider>
             <TodoProvider>
-            <Routes>
-              {/* Public route — no sidebar */}
-              <Route path="/login" element={<LoginPage />} />
+              <NotificationProvider>
+                <Routes>
+                  {/* Public route — no sidebar */}
+                  <Route path="/login" element={<LoginPage />} />
 
-              {/* Protected routes — redirect to /login when signed out */}
-              <Route element={<ProtectedRoute />}>
-                {/* Shared layout with the sidebar */}
-                <Route element={<MainLayout />}>
-                  <Route path="/" element={<Todo />} />
-                  <Route path="/plan" element={<PlanPage plans={plans} cardView={planCardView} setCardView={setPlanCardView} />} />
-                  <Route path="/cart" element={<CartPage />} />
-                  <Route path="/calendar" element={<CalendarPage />} />
-                  <Route path="/settings" element={<SettingsPage />} />
-                  <Route path="/customers" element={<CustomersPage />} />
-                </Route>
-              </Route>
-            </Routes>
-          </TodoProvider>
-        </UserInfoProvider>
+                  {/* Protected routes — redirect to /login when signed out */}
+                  <Route element={<ProtectedRoute />}>
+                    {/* Shared layout with the sidebar */}
+                    <Route element={<MainLayout />}>
+                      <Route path="/" element={<Todo />} />
+                      <Route path="/plan" element={<PlanPage plans={plans} cardView={planCardView} setCardView={setPlanCardView} />} />
+                      <Route path="/cart" element={<CartPage />} />
+                      <Route path="/calendar" element={<CalendarPage />} />
+                      <Route path="/settings" element={<SettingsPage />} />
+                      <Route path="/customers" element={<CustomersPage />} />
+                    </Route>
+                  </Route>
+                </Routes>
+              </NotificationProvider>
+            </TodoProvider>
+          </UserInfoProvider>
       </CartProvider>
     </CustomerProvider>
   </AuthProvider>

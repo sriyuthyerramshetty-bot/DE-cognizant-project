@@ -2,7 +2,8 @@ import { ShoppingCart } from 'lucide-react'
 import TextAsset from "../../assets/TextAssets.json"
 
 function AddToCartButton({ addToCart, cart, plan }) {
-    const isInCart = cart.some((p) => p.id === plan.id);
+    const normalizePlanName = (value) => (value ?? '').toString().trim().toLowerCase();
+    const isInCart = cart.some((p) => normalizePlanName(p?.name || p?.planName) === normalizePlanName(plan?.name));
 
     return (
         <button

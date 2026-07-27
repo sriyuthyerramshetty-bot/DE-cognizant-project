@@ -4,6 +4,7 @@ import { Info, Trash2 } from 'lucide-react'
 
 function CustomersPage() {
   const {
+    customers,
     selectedCustomers,
     addCustomer,
     clearCustomerHistory,
@@ -20,15 +21,61 @@ function CustomersPage() {
   })
   const [showPopup, setShowPopup] = useState(false)
   const [infoCustomerId, setInfoCustomerId] = useState(null)
+  const [formError, setFormError] = useState('')
 
-  const handleAdd = (event) => {
+  const normalizePhone = (value) => String(value ?? '').replace(/\D/g, '')
+
+  const getDuplicatePhoneError = (form) => {
+    const normalizedPhone = normalizePhone(form.phone)
+    if (!normalizedPhone) {
+      return ''
+    }
+
+    const matchingCustomer = customers.find(
+      (customer) => normalizePhone(customer.phone) === normalizedPhone,
+    )
+
+    if (!matchingCustomer) {
+      return ''
+    }
+
+    const enteredName = (form.name ?? '').trim().toLowerCase()
+    const existingName = `${matchingCustomer.firstName ?? ''} ${matchingCustomer.lastName ?? ''}`.trim().toLowerCase()
+    const hasNameInput = Boolean((form.name ?? '').trim())
+
+    const enteredEmail = (form.email ?? '').trim().toLowerCase()
+    const existingEmail = String(matchingCustomer.email ?? '').trim().toLowerCase()
+    const hasEmailInput = Boolean((form.email ?? '').trim())
+
+    const enteredAddress = (form.address ?? '').trim().toLowerCase()
+    const existingAddress = String(matchingCustomer.address?.line1 ?? '').trim().toLowerCase()
+    const hasAddressInput = Boolean((form.address ?? '').trim())
+
+    const hasConflict =
+      (hasNameInput && enteredName !== existingName) ||
+      (hasEmailInput && (existingEmail ? enteredEmail !== existingEmail : true)) ||
+      (hasAddressInput && (existingAddress ? enteredAddress !== existingAddress : true))
+
+    return hasConflict ? 'A customer with that phone number already exists.' : ''
+  }
+
+  const handleAdd = async (event) => {
     event.preventDefault()
-    const ok = addCustomer(newCustomerForm)
 
-    if (!ok) {
+    const duplicateError = getDuplicatePhoneError(newCustomerForm)
+    if (duplicateError) {
+      setFormError(duplicateError)
       return
     }
 
+    const ok = await addCustomer(newCustomerForm)
+
+    if (!ok) {
+      setFormError(lookupError || 'Unable to add customer.')
+      return
+    }
+
+    setFormError('')
     setNewCustomerForm({
       name: '',
       phone: '',
@@ -40,11 +87,13 @@ function CustomersPage() {
 
   const handlePopup = () => {
     setShowPopup(!showPopup)
+    setFormError('')
   }
 
   const handleInputChange = (field) => (event) => {
     const value = event.target.value
 
+    setFormError('')
     setNewCustomerForm((previousForm) => ({
       ...previousForm,
       [field]: value,
@@ -96,6 +145,7 @@ function CustomersPage() {
     clearCustomerHistory()
     setInfoCustomerId(null)
     setShowPopup(false)
+    setFormError('')
     setNewCustomerForm({
       name: '',
       phone: '',
@@ -230,6 +280,9 @@ function CustomersPage() {
                 value={newCustomerForm.phone}
                 onChange={handleInputChange('phone')}
               />
+              {formError ? (
+                <p className="text-sm text-red-600">{formError}</p>
+              ) : null}
               <input
                 className="w-full rounded border p-2"
                 placeholder="Email (optional)"

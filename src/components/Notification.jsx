@@ -25,13 +25,15 @@ function Notification({message, onDone, duration, actionLabel, onAction}) {
                 <span className="pointer-events-none">
                     {message}
                 </span>
-                <button
-                    type="button"
-                    className="ml-2 underline"
-                    onClick={onAction}
-                >
-                    {actionLabel}
-                </button>
+                {actionLabel ? (
+                    <button
+                        type="button"
+                        className="ml-2 underline"
+                        onClick={onAction}
+                    >
+                        {actionLabel}
+                    </button>
+                ) : null}
             </div>
         </div>
     );

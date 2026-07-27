@@ -286,6 +286,31 @@ export class CustomerStorage {
     const { data: existingCustomer } = await this.fetchCustomerByPhone(normalizedPhone)
 
     if (existingCustomer) {
+      const hasNameInput = Boolean(nameInput)
+      const hasEmailInput = Boolean(emailInput)
+      const hasAddressInput = Boolean(addressInput)
+      const existingName = `${existingCustomer.firstName ?? ''} ${existingCustomer.lastName ?? ''}`.trim().toLowerCase()
+      const existingEmail = String(existingCustomer.email ?? '').trim().toLowerCase()
+      const existingAddress = String(existingCustomer.address?.line1 ?? '').trim().toLowerCase()
+      const enteredName = nameInput.toLowerCase()
+      const enteredEmail = emailInput.toLowerCase()
+      const enteredAddress = addressInput.toLowerCase()
+
+      const hasConflict =
+        (hasNameInput && enteredName !== existingName) ||
+        (hasEmailInput && (existingEmail ? enteredEmail !== existingEmail : true)) ||
+        (hasAddressInput && (existingAddress ? enteredAddress !== existingAddress : true))
+
+      if (hasConflict) {
+        return {
+          success: false,
+          error: 'A customer with that phone number already exists.',
+          customer: existingCustomer,
+          isExisting: true,
+          conflict: true,
+        }
+      }
+
       return { success: true, error: '', customer: existingCustomer, isExisting: true }
     }
 

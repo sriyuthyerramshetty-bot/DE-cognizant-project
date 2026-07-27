@@ -4,14 +4,15 @@ import { Plus, Minus } from 'lucide-react'
 // given plan. The current count is derived from the cart so the control stays
 // in sync whether the plan is shown in the list view or the card view.
 function LineCounter({ cart, plan, addLine, removeLine }) {
-    const cartPlan = cart.find((p) => p.id === plan.id);
+    const normalizePlanName = (value) => (value ?? '').toString().trim().toLowerCase();
+    const cartPlan = cart.find((p) => normalizePlanName(p?.name || p?.planName) === normalizePlanName(plan?.name));
     const lines = cartPlan?.lines ?? 0;
 
     return (
-        <div className="flex items-center gap-1">
+        <div className="flex w-24 items-center justify-center gap-1">
             <button
                 type="button"
-                onClick={() => removeLine(plan.id)}
+                onClick={() => removeLine(plan)}
                 disabled={lines === 0}
                 aria-label="Remove a line"
                 className={`flex h-6 w-6 items-center justify-center rounded transition-colors ${

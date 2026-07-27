@@ -30,6 +30,24 @@ function loadSavedCheckout() {
     }
 }
 
+function normalizePlanName(value) {
+    return (value ?? '').toString().trim().toLowerCase();
+}
+
+function matchesPlan(cartPlan, plan) {
+    const planName = normalizePlanName(plan?.name || plan?.planName);
+    const cartPlanName = normalizePlanName(cartPlan?.name || cartPlan?.planName);
+
+    if (planName && cartPlanName && planName === cartPlanName) {
+        return true;
+    }
+
+    const planId = normalizePlanName(plan?.id ?? plan?.planId);
+    const cartPlanId = normalizePlanName(cartPlan?.id ?? cartPlan?.planId);
+
+    return Boolean(planId && cartPlanId && planId === cartPlanId);
+}
+
 export function CartProvider({ children }) {
     const { activeCustomerId } = useContext(CustomerContext);
     const [cartByCustomerId, setCartByCustomerId] = useState(loadCarts);
@@ -134,7 +152,7 @@ export function CartProvider({ children }) {
 
         setCartByCustomerId((previousCarts) => {
             const currentCart = previousCarts[activeCustomerId] ?? [];
-            if (currentCart.some((cartPlan) => cartPlan.id === plan.id)) {
+            if (currentCart.some((cartPlan) => matchesPlan(cartPlan, plan))) {
                 return previousCarts;
             }
 
@@ -156,11 +174,11 @@ export function CartProvider({ children }) {
 
         setCartByCustomerId((previousCarts) => {
             const currentCart = previousCarts[activeCustomerId] ?? [];
-            const exists = currentCart.some((cartPlan) => cartPlan.id === plan.id);
+            const exists = currentCart.some((cartPlan) => matchesPlan(cartPlan, plan));
 
             const nextCart = exists
                 ? currentCart.map((cartPlan) =>
-                    cartPlan.id === plan.id
+                    matchesPlan(cartPlan, plan)
                         ? { ...cartPlan, lines: (cartPlan.lines ?? 1) + 1 }
                         : cartPlan
                 )
@@ -177,22 +195,26 @@ export function CartProvider({ children }) {
 
     // Remove one line from a plan. When the last line is removed the plan drops
     // out of the cart entirely.
-    const removeLine = (planId) => {
+    const removeLine = (planOrPlanId) => {
         if (!activeCustomerId) {
             return;
         }
 
+        const targetPlan = typeof planOrPlanId === 'object' && planOrPlanId !== null
+            ? planOrPlanId
+            : { id: planOrPlanId };
+
         setCartByCustomerId((previousCarts) => {
             const currentCart = previousCarts[activeCustomerId] ?? [];
-            const target = currentCart.find((cartPlan) => cartPlan.id === planId);
+            const target = currentCart.find((cartPlan) => matchesPlan(cartPlan, targetPlan));
             if (!target) {
                 return previousCarts;
             }
 
             const nextCart = (target.lines ?? 1) <= 1
-                ? currentCart.filter((cartPlan) => cartPlan.id !== planId)
+                ? currentCart.filter((cartPlan) => !matchesPlan(cartPlan, targetPlan))
                 : currentCart.map((cartPlan) =>
-                    cartPlan.id === planId
+                    matchesPlan(cartPlan, targetPlan)
                         ? { ...cartPlan, lines: cartPlan.lines - 1 }
                         : cartPlan
                 );
@@ -206,17 +228,21 @@ export function CartProvider({ children }) {
         clearCheckoutSavedForCustomer(activeCustomerId);
     };
 
-    const removeFromCart = (planId) => {
+    const removeFromCart = (planOrPlanId) => {
         if (!activeCustomerId) {
             return;
         }
+
+        const targetPlan = typeof planOrPlanId === 'object' && planOrPlanId !== null
+            ? planOrPlanId
+            : { id: planOrPlanId };
 
         setCartByCustomerId((previousCarts) => {
             const currentCart = previousCarts[activeCustomerId] ?? [];
 
             return {
                 ...previousCarts,
-                [activeCustomerId]: currentCart.filter((plan) => plan.id !== planId),
+                [activeCustomerId]: currentCart.filter((plan) => !matchesPlan(plan, targetPlan)),
             };
         });
 

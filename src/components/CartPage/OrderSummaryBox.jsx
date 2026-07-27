@@ -22,7 +22,7 @@ function OrderSummaryBox ({ cart, removeFromCart }) {
                             <div className="flex items-center gap-3">
                                 <span className="font-semibold">{plan.price}</span>
                                 <button
-                                    onClick={() => removeFromCart(plan.id)}
+                                    onClick={() => removeFromCart(plan)}
                                     className="text-red-500 hover:text-red-700 text-sm"
                                 >
                                     Remove

@@ -5,13 +5,22 @@ import { useCart } from '../../context/CartContext.jsx'
 import { useUserInfo } from '../../context/UserInfoContext.jsx'
 import { CustomerContext } from '../../context/CustomerContext.jsx'
 import TextAsset from '../../assets/TextAssets.json'
+import { isCheckoutFormReady } from './SaveCheckoutButton.logic.js'
 
 function UserInfoBox () {
 
     const { cart } = useCart();
-    const { formData, handleChange, isFormValid, setFormData } = useUserInfo();
+    const { formData, handleChange, setFormData } = useUserInfo();
     const { activeCustomer, activeCustomerId, updateActiveCustomerField } = useContext(CustomerContext)
     const previousCustomerIdRef = useRef(null)
+
+    const effectiveName = (formData.name || `${activeCustomer?.firstName ?? ''} ${activeCustomer?.lastName ?? ''}`.trim()).trim()
+    const effectivePhone = (formData.phone || activeCustomer?.phone || '').trim()
+    const effectiveIsFormValid = isCheckoutFormReady({
+        activeCustomerId,
+        name: effectiveName,
+        phone: effectivePhone,
+    })
 
     useEffect(() => {
         if (previousCustomerIdRef.current === activeCustomerId) {
@@ -72,8 +81,8 @@ function UserInfoBox () {
                     <input name="address" value={formData.address} onChange={handleUserInfoChange} type="text" placeholder={TextAsset.UserInfoBox.addressPlaceholder} className="border rounded-md px-3 py-2 text-sm outline-none focus:border-gray-400" />
                 </div>
                 <div className="flex flex-col gap-0.1">
-                    <CheckoutButton cart={cart} isFormValid={isFormValid} />
-                    <SaveCheckoutButton cart={cart} isFormValid={isFormValid} />
+                    <CheckoutButton cart={cart} isFormValid={effectiveIsFormValid} />
+                    <SaveCheckoutButton cart={cart} isFormValid={effectiveIsFormValid} />
                 </div>
             </form>
         </div>

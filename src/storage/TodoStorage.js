@@ -1,11 +1,25 @@
-import { formatDateOnly, formatDateTime } from '../utils/dueDate'
+import { formatDateOnly, formatDateTime, parseDueInput } from '../utils/dueDate'
 
 const TODOS_CACHE_KEY = 'todo-app.todos-cache'
 
 const TODOS_TABLE = 'todos'
 
+const DISPLAY_DATE_TIME_RE = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/
+const DISPLAY_DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/
+
 const normalizeDateField = (value, fallbackToDateOnly = false) => {
   if (!value) return ''
+
+  if (typeof value === 'string') {
+    if (DISPLAY_DATE_TIME_RE.test(value) || DISPLAY_DATE_ONLY_RE.test(value)) {
+      return value
+    }
+
+    const parsed = parseDueInput(value)
+    if (parsed) {
+      return parsed.normalizedDisplay
+    }
+  }
 
   const date = value instanceof Date ? value : new Date(value)
   if (Number.isNaN(date.getTime())) return ''
@@ -15,6 +29,23 @@ const normalizeDateField = (value, fallbackToDateOnly = false) => {
   }
 
   return formatDateTime(date)
+}
+
+const resolveDueAtFromDb = (dueAtRaw, reminderAtIso) => {
+  if (typeof dueAtRaw === 'string') {
+    if (DISPLAY_DATE_TIME_RE.test(dueAtRaw) || DISPLAY_DATE_ONLY_RE.test(dueAtRaw)) {
+      return dueAtRaw
+    }
+  }
+
+  if (reminderAtIso) {
+    const reminderDate = new Date(reminderAtIso)
+    if (!Number.isNaN(reminderDate.getTime())) {
+      return formatDateTime(reminderDate)
+    }
+  }
+
+  return normalizeDateField(dueAtRaw, true)
 }
 
 export class TodoStorage {
@@ -103,7 +134,7 @@ export class TodoStorage {
       cartId: dbTodo.cart_id ?? null,
       name: dbTodo.name ?? '',
       isCompleted: dbTodo.is_completed ?? false,
-      dueAt: normalizeDateField(dbTodo.due_at, !normalizedReminderAt),
+      dueAt: resolveDueAtFromDb(dbTodo.due_at, normalizedReminderAt),
       reminderAt: normalizedReminderAt,
       reminderNotifiedAt: dbTodo.reminder_notified_at
         ? new Date(dbTodo.reminder_notified_at).toISOString()
@@ -126,7 +157,18 @@ export class TodoStorage {
     if (todo.cartId !== undefined) dbTodo.cart_id = todo.cartId
     if (todo.name !== undefined) dbTodo.name = todo.name
     if (todo.isCompleted !== undefined) dbTodo.is_completed = todo.isCompleted
-    if (todo.dueAt !== undefined) dbTodo.due_at = todo.dueAt || null
+    if (todo.dueAt !== undefined) {
+      if (!todo.dueAt) {
+        dbTodo.due_at = null
+      } else if (todo.reminderAt) {
+        // Store the canonical UTC instant so timestamptz columns don't reinterpret
+        // local display strings (e.g. "2026-07-27 14:30") as UTC.
+        dbTodo.due_at = todo.reminderAt
+      } else {
+        const parsedDueAt = parseDueInput(todo.dueAt)
+        dbTodo.due_at = parsedDueAt ? parsedDueAt.date.toISOString() : todo.dueAt
+      }
+    }
     if (todo.reminderAt !== undefined) dbTodo.reminder_at = todo.reminderAt
     if (todo.reminderNotifiedAt !== undefined) dbTodo.reminder_notified_at = todo.reminderNotifiedAt
     if (todo.updatedAt !== undefined) dbTodo.updated_at = todo.updatedAt

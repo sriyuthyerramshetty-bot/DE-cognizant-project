@@ -136,17 +136,18 @@ function Todo() {
 
   const handleTaskDueDateCommit = async (taskId, parsedDue) => {
     if (taskId === 'pending-new') {
+      const reminderAt = parsedDue.hasTime ? parsedDue.date.toISOString() : null
       setPendingNewTask((prev) => prev ? {
         ...prev,
         dueAt: parsedDue.normalizedDisplay,
-        reminderAt: parsedDue.date.toISOString(),
+        reminderAt,
         reminderNotifiedAt: null,
       } : null)
-      return { normalizedDisplay: parsedDue.normalizedDisplay, iso: parsedDue.date.toISOString() }
+      return { normalizedDisplay: parsedDue.normalizedDisplay, iso: reminderAt }
     }
     await updateTask(taskId, {
       dueAt: parsedDue.normalizedDisplay,
-      reminderAt: parsedDue.date.toISOString(),
+      reminderAt: parsedDue.hasTime ? parsedDue.date.toISOString() : null,
       reminderNotifiedAt: null,
     })
   }

@@ -73,7 +73,7 @@ function SaveCheckoutButton({ cart, isFormValid }) {
     const handleTaskDueDateCommit = async (taskId, parsedDue) => {
         await updateTask(taskId, {
             dueAt: parsedDue.normalizedDisplay,
-            reminderAt: parsedDue.date.toISOString(),
+            reminderAt: parsedDue.hasTime ? parsedDue.date.toISOString() : null,
             reminderNotifiedAt: null,
         })
     }

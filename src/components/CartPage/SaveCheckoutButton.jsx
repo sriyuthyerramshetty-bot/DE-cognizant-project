@@ -2,24 +2,30 @@ import { useContext, useRef, useState } from 'react'
 import TextAsset from '../../assets/TextAssets.json'
 import { useTodo } from '../../context/TodoContext.jsx'
 import { CustomerContext } from '../../context/CustomerContext.jsx'
-import { useCart } from '../../context/CartContext.jsx'
+import { useNotification } from '../../context/NotificationContext.jsx'
 import { cartStorage } from '../../storage/storageProvider.js'
-import Notification from '../Notification.jsx'
 import DueDateInput from '../DueDateInput.jsx'
+import { isSaveCheckoutButtonDisabled } from './SaveCheckoutButton.logic.js'
 
 function SaveCheckoutButton({ cart, isFormValid }) {
     const { createTodoFromCheckout, tasks, updateTask } = useTodo()
     const { activeCustomer } = useContext(CustomerContext)
-    const { isCheckoutSaved, markCheckoutSaved } = useCart()
-    const [notice, setNotice] = useState('')
+    const { showNotification } = useNotification()
     const [savedCheckoutTaskId, setSavedCheckoutTaskId] = useState(null)
     const dueDateInputRef = useRef(null)
     const [isDuePopoverOpen, setIsDuePopoverOpen] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
 
-    // Button is disabled if the cart is empty or the form is invalid
+    // Button is disabled if the cart is empty, the form is invalid, or a save is already in progress.
     const isEmpty = cart.length === 0;
-    const isDisabled = isEmpty || !isFormValid || isCheckoutSaved || isSaving;
+    const isDisabled = isSaveCheckoutButtonDisabled({
+        isEmpty,
+        isFormValid,
+        isSaving,
+        tasks,
+        activeCustomerId: activeCustomer?.id,
+        cart,
+    })
 
     const savedTask = tasks.find((task) => task.id === savedCheckoutTaskId);
     
@@ -27,7 +33,7 @@ function SaveCheckoutButton({ cart, isFormValid }) {
         e.preventDefault();
         
         if (!activeCustomer?.id) {
-            setNotice('Please select a customer first.')
+            showNotification({ message: 'Please select a customer first.' })
             return
         }
 
@@ -35,35 +41,56 @@ function SaveCheckoutButton({ cart, isFormValid }) {
 
         const customerName = `${activeCustomer.firstName ?? ''} ${activeCustomer.lastName ?? ''}`.trim() || 'Customer'
         const customerId = activeCustomer.id
-        const planNames = cart.map((item) => item.name || item.planName).filter(Boolean)
+        const planNames = (cart ?? [])
+            .map((item) => {
+                const name = String(item?.name ?? item?.planName ?? '').trim()
+                if (!name) {
+                    return ''
+                }
 
-        // Save cart to database
+                const lines = Number(item?.lines ?? item?.lineCount ?? 1) || 1
+                return lines > 1 ? `${name} x${lines}` : name
+            })
+            .filter(Boolean)
+
+        // Save cart to storage if possible. If storage fails, continue with a local fallback
+        // so the checkout task can still be created and the user gets feedback.
         const { success: cartSaved, error: cartError, cartId } = await cartStorage.saveCheckoutCart(customerId, cart)
 
         if (!cartSaved) {
-            console.error('Failed to save cart:', cartError)
-            setNotice('Failed to save cart. Please try again.')
-            setIsSaving(false)
-            return
+            console.warn('Falling back to checkout save flow after cart save error:', cartError)
         }
 
-        // Create todo with cart reference
+        const fallbackCartId = cartId ?? `local-${customerId}-${Date.now()}`
+
+        // Create or update the checkout todo with the saved cart reference
         const result = await createTodoFromCheckout({ 
             customerName, 
-            cart: { id: cartId }, 
+            cart: { id: fallbackCartId }, 
             customerId, 
             planNames 
         })
+
+        if (!result?.success) {
+            console.error('Failed to create checkout todo:', result)
+            showNotification({ message: 'Failed to save checkout task. Please try again.' })
+            setIsSaving(false)
+            return
+        }
         
-        markCheckoutSaved()
         setSavedCheckoutTaskId(result.taskId)
         setIsSaving(false)
 
-        if (result.found) {
-            setNotice('Checkout saved and todo updated!')
-        } else {
-            setNotice('Checkout saved and todo created!')
-        }
+        const message = result.found
+            ? (cartSaved ? 'Checkout saved and todo updated!' : 'Checkout saved locally and todo updated!')
+            : (cartSaved ? 'Checkout saved and todo created!' : 'Checkout saved locally and todo created!')
+
+        showNotification({
+            message,
+            duration: 8000,
+            actionLabel: 'Set due date?',
+            onAction: handleNotificationAction,
+        })
     };
 
     const handleTaskDueDateClear = async (taskId) => {
@@ -135,8 +162,6 @@ function SaveCheckoutButton({ cart, isFormValid }) {
                 </div>
             ) : null}
             </div>
-
-            <Notification message={notice} onDone={() => setNotice('')} duration={8000} actionLabel="Set due date?" onAction={handleNotificationAction} />
         </>
     )
 }
